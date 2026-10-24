@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "protocol": 1,
+  "releaseDate": "2026-10-24",
+  "entry": "dist/VWMenu.luau",
+  "minimumEnvironment": "Roblox client with PlayerGui; executor loader additionally requires HTTP and loadstring",
+  "runtimeValidation": "PENDING_STUDIO_AND_XENO"
+}

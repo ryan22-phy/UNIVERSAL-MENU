@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "protocol": 1,
+  "bundle": "dist/VWMenu.luau",
+  "sha256": "2775ec3fd1e7f41f9402a678f4c1c1b4c93f27e16f8228121b800be79a9370ba",
+  "bytes": 129288,
+  "modules": [
+    "client/AimAssist",
+    "client/ClientController",
+    "client/Compatibility",
+    "client/ESPManager",
+    "client/EntityRegistry",
+    "client/FlightController",
+    "client/HealthDiagnostics",
+    "client/ServerBridge",
+    "client/SpeedController",
+    "config/ClientPolicy",
+    "shared/CleanupManager",
+    "shared/ConfigManager",
+    "shared/Diagnostics",
+    "shared/UIManager"
+  ]
+}
