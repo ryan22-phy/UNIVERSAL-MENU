@@ -7,7 +7,7 @@ return function(_import)
     local DEFAULTS = {
         FOV = 120, Smoothness = 12, MaxDistance = 1000,
         VisibilityCheck = true, TeamCheck = true, HeadPriority = true,
-        Fallback = true, TargetLock = true, SwitchDelay = 0.2,
+        Fallback = true, FallbackPart = "HumanoidRootPart", TargetLock = true, SwitchDelay = 0.2,
         Mode = "Hold", Key = "MouseButton2", Priority = "Angle",
         Prediction = 0, ShowFOV = true,
     }
@@ -42,6 +42,7 @@ return function(_import)
             _elapsed = 0, _nextSwitchAt = 0, _lastReport = -1,
             _targetKey = nil, _cfg = {}, _trackingLosses = 0,
             _activationAt = nil, _acquisitionMs = nil, _angularError = nil,
+            _samples = {}, _sampleIndex = 0, _sampleSum = 0, _sampleSquares = 0,
         }, AimAssist)
         self._raycast = RaycastParams.new()
         self._raycast.FilterType = Enum.RaycastFilterType.Exclude
@@ -55,6 +56,10 @@ return function(_import)
         self._targetName = nil
         self._targetDistance = nil
         self._angularError = nil
+        self._targetPart = nil
+        self._ctx.SelectedTarget, self._ctx.SelectedTargetPart = nil, nil
+        table.clear(self._samples)
+        self._sampleIndex, self._sampleSum, self._sampleSquares = 0, 0, 0
         if delaySwitch then
             self._nextSwitchAt = self._elapsed + self._cfg.SwitchDelay
         else
@@ -169,6 +174,9 @@ return function(_import)
         self._ctx.Diagnostics:Set("Aim.AngularErrorDeg", "—")
         self._ctx.Diagnostics:Set("Aim.AcquisitionMs", "—")
         self._ctx.Diagnostics:Set("Aim.TrackingLosses", self._trackingLosses)
+        self._ctx.Diagnostics:Set("Aim.TargetPart", "—")
+        self._ctx.Diagnostics:Set("Aim.StabilityDeg", "—")
+        self._ctx.Diagnostics:Set("Aim.StabilitySamples", 0)
         if wasEnabled then self._ctx.Diagnostics:Log("AimAssist", "disabled", "Activation and target lock cleared") end
     end
 
@@ -186,6 +194,7 @@ return function(_import)
         config.Prediction = number(config.Prediction, 0, 0, 2)
         config.Mode = config.Mode == "Toggle" and "Toggle" or "Hold"
         config.Priority = config.Priority == "Distance" and "Distance" or "Angle"
+        if not table.find({"UpperTorso","Torso","HumanoidRootPart"},config.FallbackPart) then config.FallbackPart="HumanoidRootPart" end
         config.Key = type(config.Key) == "string" and config.Key or "MouseButton2"
         self._bindingKey = nil
         if not MOUSE_BINDINGS[config.Key] then
@@ -211,16 +220,25 @@ return function(_import)
         if not root or not root:IsA("BasePart") or not root:IsDescendantOf(workspace) then return nil end
         if model and (not model.Parent or not root:IsDescendantOf(model)) then return nil end
         if not entity.Instance or not entity.Instance.Parent then return nil end
-        if player == self._ctx.Player then return nil end
-        if entity.Humanoid and entity.Humanoid.Health <= 0 then return nil end
-        if self._cfg.TeamCheck and player and not player.Neutral and not self._ctx.Player.Neutral
-            and player.Team ~= nil and player.Team == self._ctx.Player.Team then return nil end
-        local part = root
-        if self._cfg.HeadPriority then
-            local head = model and model:FindFirstChild("Head")
-            if head and head:IsA("BasePart") then part = head
-            elseif not self._cfg.Fallback then return nil end
+        if player == self._ctx.Player or model == self._ctx.Player.Character then return nil end
+        if not entity.Humanoid or not finite(entity.Humanoid.Health) or entity.Humanoid.Health <= 0 then return nil end
+        if self._cfg.TeamCheck then
+            if self._ctx.Adapters then
+                if self._ctx.Adapters:SameTeam(self._ctx.Player,player,model) then return nil end
+            elseif player and not player.Neutral and not self._ctx.Player.Neutral
+                and player.Team ~= nil and player.Team == self._ctx.Player.Team then return nil end
         end
+        local part
+        if self._ctx.Adapters then
+            part=self._ctx.Adapters:ResolveAimPart(entity,self._cfg)
+        else
+            local head = model and model:FindFirstChild("Head")
+            if (self._cfg.HeadPriority or not self._cfg.Fallback) and head and head:IsA("BasePart") and head.Parent and head:IsDescendantOf(model) then part=head
+            elseif self._cfg.Fallback then
+                part=model and model:FindFirstChild(self._cfg.FallbackPart)
+            end
+        end
+        if not part or not part:IsA("BasePart") or not part.Parent or not part:IsDescendantOf(model) then return nil end
         if not vectorFinite(part.Position) then return nil end
         local distance = (root.Position - camera.CFrame.Position).Magnitude
         if not finite(distance) or distance > self._cfg.MaxDistance then return nil end
@@ -240,7 +258,7 @@ return function(_import)
                 and not (model and hit.Instance:IsDescendantOf(model)) then return nil end
         end
         return {
-            Key = entity.Instance, Entity = entity, Position = position,
+            Key = entity.Instance, Entity = entity, Position = position, Part = part,
             Screen = projected, Distance = distance,
             Score = self._cfg.Priority == "Distance" and distance or pixels,
         }
@@ -258,6 +276,11 @@ return function(_import)
         diagnostics:Set("Aim.AngularErrorDeg", self._angularError or "—")
         diagnostics:Set("Aim.AcquisitionMs", self._acquisitionMs or "—")
         diagnostics:Set("Aim.TrackingLosses", self._trackingLosses)
+        diagnostics:Set("Aim.TargetPart", self._targetPart or "—")
+        local countSamples=#self._samples
+        local variance=countSamples>0 and math.max(0,self._sampleSquares/countSamples-(self._sampleSum/countSamples)^2) or 0
+        diagnostics:Set("Aim.StabilityDeg",countSamples>0 and math.sqrt(variance) or "—")
+        diagnostics:Set("Aim.StabilitySamples",countSamples)
     end
 
     function AimAssist:Step(dt)
@@ -276,8 +299,11 @@ return function(_import)
         if not camera or camera.ViewportSize.X <= 0 or camera.ViewportSize.Y <= 0 then
             self:_clearTarget(false)
             self._root.Visible = false
+            self._ctx.Diagnostics:Set("Aim.CameraStatus", "CAMERA NOT FOUND")
+            self:_report(false,0,os.clock()-started)
             return
         end
+        self._ctx.Diagnostics:Set("Aim.CameraStatus", "CURRENT_CAMERA")
         self._root.Visible = true
         local center = camera.ViewportSize * 0.5
         self._circle.Position = UDim2.fromOffset(center.X, center.Y)
@@ -319,7 +345,10 @@ return function(_import)
         if selected.Key ~= self._targetKey then
             self._targetKey = selected.Key
             self._nextSwitchAt = self._elapsed + self._cfg.SwitchDelay
+            table.clear(self._samples);self._sampleIndex,self._sampleSum,self._sampleSquares=0,0,0
         end
+        self._ctx.SelectedTarget, self._ctx.SelectedTargetPart=selected.Key,selected.Part
+        self._targetPart=selected.Part.Name or (selected.Part==selected.Entity.Root and self._cfg.FallbackPart or "Head")
         if self._acquisitionMs == nil and self._activationAt ~= nil then
             -- Approximate input-to-first-target latency, including frame scheduling.
             self._acquisitionMs = math.max(0, (os.clock() - self._activationAt) * 1000)
@@ -338,6 +367,13 @@ return function(_import)
             local look = camera.CFrame.LookVector
             local dot = look.X * direction.X + look.Y * direction.Y + look.Z * direction.Z
             self._angularError = finite(dot) and math.deg(math.acos(math.clamp(dot, -1, 1))) or nil
+            if self._angularError then
+                self._sampleIndex=self._sampleIndex%60+1
+                local old=self._samples[self._sampleIndex] or 0
+                self._sampleSum+=self._angularError-old
+                self._sampleSquares+=self._angularError*self._angularError-old*old
+                self._samples[self._sampleIndex]=self._angularError
+            end
         end
         self:_report(true, count, os.clock() - started)
     end

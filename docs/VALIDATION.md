@@ -1,3 +1,5 @@
+> Histórico 1.x. Estado atual: [validação V4](V4_VALIDATION.md) e [plano V4](V4_PLAN.md).
+
 # Validação e aceitação — 1.0.1 / 2026-10-24
 
 ## Correção pública 1.0.1

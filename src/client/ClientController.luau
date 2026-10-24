@@ -18,7 +18,7 @@ return function(import)
             return previous
         end
         local services={}
-        for _,name in ipairs({"Players","RunService","UserInputService","CollectionService","ReplicatedStorage","HttpService","Workspace"}) do
+        for _,name in ipairs({"Players","RunService","UserInputService","CollectionService","ReplicatedStorage","HttpService","TweenService","Workspace"}) do
             local ok,value=pcall(function() return game:GetService(name) end)
             if ok then services[name]=value else warn("[ VW ] service/"..name..": "..tostring(value)) end
         end
@@ -81,7 +81,7 @@ return function(import)
             end
             local insetOK,insetError=pcall(function() gui.ScreenInsets=Enum.ScreenInsets.None end)
             if not insetOK then diagnostics:Log("GUI","FALLBACK","ScreenInsets unavailable: "..tostring(insetError)) end
-            local Policy={AllowedPlaceIds={},AuthorizedUserIds={},TargetUserIds={},AllowStudio=false,Version="1.0.1",VersionUrl=""}
+            local Policy={AllowedPlaceIds={},AuthorizedUserIds={},TargetUserIds={},AllowStudio=false,Version="4.0.0",VersionUrl=""}
             local policyOK,policyValue=pcall(import,"config/ClientPolicy")
             if policyOK and type(policyValue)=="table" then Policy=policyValue else report("ClientPolicy","import",policyValue) end
             local studio=false
@@ -101,7 +101,7 @@ return function(import)
             local function entitiesStub() return {List=function() return {} end,Step=function() end} end
             ctx.Bridge=bridgeStub(); ctx.Entities=entitiesStub()
             ctx.IsAuthorized=function() return self.Alive and (localAuthorized or ctx.Bridge.Available==true) end
-            diagnostics:Set("Version",Policy.Version or "1.0.1")
+            diagnostics:Set("Version",Policy.Version or "4.0.0")
             diagnostics:Set("Interface.Public",true); diagnostics:Set("Authorization.Local",localAuthorized)
             diagnostics:Set("Environment",studio and "Studio" or "Roblox client; executor not certified")
             ctx.Actions={
@@ -124,6 +124,11 @@ return function(import)
                     if not self._profiles[name] then return false,"Perfil não encontrado" end
                     return config:Import(self._profiles[name])
                 end,
+                ListProfiles=function()
+                    local names={};for name in pairs(self._profiles) do names[#names+1]=name end
+                    table.sort(names);return names
+                end,
+                ApplyPreset=function(name) return config:ApplyPreset(name) end,
                 ProbeHealth=function()
                     if not ctx.IsAuthorized() then diagnostics:Log("Health","REJECTED","Autorização necessária"); return false,"Autorização necessária" end
                     local module=self.Modules.Health
@@ -131,9 +136,15 @@ return function(import)
                     return false,"Módulo de diagnóstico de saúde indisponível"
                 end,
                 RequestDamage=function()
-                    return ctx.Bridge:Request("Damage",{Amount=10})
+                    local module=self.Modules.Health
+                    if not module then return false,"Health diagnostics unavailable" end
+                    return module:RequestDamage(10)
                 end,
-                RequestRestore=function() return ctx.Bridge:Request("RestoreHealth",{}) end,
+                RequestRestore=function()
+                    local module=self.Modules.Health
+                    if not module then return false,"Health diagnostics unavailable" end
+                    return module:RestoreHealth()
+                end,
                 CheckVersion=function()
                     local url=Policy.VersionUrl
                     if url=="" then diagnostics:Log("Version","INFO","Configure ClientPolicy.VersionUrl com version.json Raw"); return end
@@ -164,6 +175,7 @@ return function(import)
             self.InterfaceReady=true
             diagnostics:Log("UI","READY","Public interface created; lab actions require authorization")
             print("[ VW ] Interface ready.")
+            print("[VW] UI initialized")
             local function optional(name,path,constructor)
                 local resource
                 local loaded,value=pcall(function()
@@ -183,6 +195,7 @@ return function(import)
                 return nil
             end
             ctx.Bridge=optional("ServerBridge","client/ServerBridge",function(module) return module.new(ctx) end) or ctx.Bridge
+            ctx.Adapters=optional("UniversalGameAdapter","client/UniversalGameAdapter",function(module) return module.new(ctx,Policy) end)
             ctx.Entities=optional("EntityRegistry","client/EntityRegistry",function(module) return module.new(ctx,Policy) end) or ctx.Entities
             local compatible,capabilities=pcall(function() return import("client/Compatibility").Probe(ctx) end)
             if compatible then self.Capabilities=capabilities else report("Compatibility","probe",capabilities) end
@@ -202,19 +215,34 @@ return function(import)
                         if not cleaned then report(name,"cleanup",cleanupError) end
                     end
                     self.Modules[name]=nil; failed[name]=true; report(name,"initialization",result)
-                else diagnostics:Set(name..".Initialized",true) end
+                    diagnostics:Set(name..".Initialized",false);diagnostics:Set(name..".Status","ERROR")
+                else
+                    diagnostics:Set(name..".Initialized",true)
+                    diagnostics:Set(name..".Status","MODULE READY")
+                    print("[VW] "..(name=="Aim" and "AimAssist" or name).." initialized")
+                end
             end
+            print("[VW] Modules ready")
             self.Cleanup:Add(config:Subscribe(function(path,value)
+                if path=="Settings.Adapter" and ctx.Entities.Invalidate then ctx.Entities:Invalidate() end
                 for name,module in pairs(self.Modules) do
-                    if module.UpdateConfig and not failed[name] then
+                    if name~="UI" and module.UpdateConfig and not failed[name] then
                         local updated,err=pcall(module.UpdateConfig,module,path,value)
                         if not updated then report(name,"configuration",err) end
                     end
                 end
             end))
             local bridgeFailed,entitiesFailed=false,false
+            local timings={}
             local function step(dt)
                 if not self.Alive then return end
+                if ctx.Adapters then
+                    local stepped,err=pcall(ctx.Adapters.Step,ctx.Adapters,dt)
+                    if not stepped then
+                        report("UniversalGameAdapter","step",err)
+                        pcall(ctx.Adapters.Destroy,ctx.Adapters);ctx.Adapters=nil
+                    end
+                end
                 if not bridgeFailed then
                     local stepped,err=pcall(ctx.Bridge.Step,ctx.Bridge,dt)
                     if not stepped then bridgeFailed=true; ctx.Bridge.Available=false; report("ServerBridge","step",err) end
@@ -228,24 +256,38 @@ return function(import)
                     local name=descriptor[1]; local module=self.Modules[name]
                     if module and not failed[name] then
                         local desired=authorized and (name=="Health" or config:Get(name..".Enabled")==true)
+                        local configured=name=="Health" or config:Get(name..".Enabled")==true
+                        diagnostics:Set(name..".Configured",configured)
+                        diagnostics:Set(name..".Status",configured and not authorized and "SERVER RESTRICTION" or desired and "MODULE READY" or "MODULE DISABLED")
+                        local started=os.clock()
                         local stepped,err=pcall(function()
                             if desired~=(active[name]==true) then
                                 if desired then module:Enable() else module:Disable() end
                                 active[name]=desired; diagnostics:Set(name..".Requested",desired)
                             end
-                            module:Step(dt)
+                            if desired or name=="Health" then module:Step(dt) end
                         end)
+                        local ms=(os.clock()-started)*1000
+                        timings[name]=timings[name] and timings[name]*0.9+ms*0.1 or ms
                         if not stepped then
                             failed[name]=true; active[name]=false
                             local disabled,disableError=pcall(module.Disable,module)
                             if not disabled then report(name,"disable",disableError) end
                             report(name,"step",err)
+                            diagnostics:Set(name..".Status","ERROR")
                         end
                     end
                 end
                 self._fpsTime+=dt; self._frames+=1
                 if self._fpsTime>=0.5 then
                     diagnostics:Set("FPS",math.floor(self._frames/self._fpsTime+0.5))
+                    local slowest,slowestMs="—",0
+                    for name,ms in pairs(timings) do
+                        diagnostics:Set("Timing."..name..".StepMs",math.floor(ms*1000)/1000)
+                        if ms>slowestMs then slowest,slowestMs=name,ms end
+                    end
+                    diagnostics:Set("Timing.SlowestModule",slowest)
+                    diagnostics:Set("Timing.Scope","Client Lua CPU sample (EWMA); excludes engine render/physics/server")
                     self._fpsTime=0; self._frames=0
                 end
                 if not failed.UI then

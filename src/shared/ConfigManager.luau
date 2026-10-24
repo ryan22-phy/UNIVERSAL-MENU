@@ -12,6 +12,7 @@ return function(_import)
     define("Aim", "MaxDistance", 1000, 10, 5000)
     for key, value in pairs({ VisibilityCheck=true, TeamCheck=true, HeadPriority=true,
         Fallback=true, TargetLock=true, ShowFOV=true }) do define("Aim", key, value) end
+    define("Aim", "FallbackPart", "HumanoidRootPart", nil, nil, { "UpperTorso", "Torso", "HumanoidRootPart" })
     define("Aim", "SwitchDelay", 0.2, 0, 2)
     define("Aim", "Mode", "Hold", nil, nil, { "Hold", "Toggle" })
     define("Aim", "Key", "MouseButton2")
@@ -19,10 +20,15 @@ return function(_import)
     define("Aim", "Prediction", 0, 0, 0.5)
     for key, value in pairs({ Enabled=false, Players=true, NPCs=true, Items=true,
         Boxes=true, Names=true, Health=true, Distance=true, Lines=false,
-        ThroughWalls=false }) do define("ESP", key, value) end
+        ThroughWalls=false, Skeleton=false, Highlight=true, HeadMarker=false, TargetIndicator=true,
+        TeamIdentification=false, ColorByTeam=false, ShowDead=false, DroppedItems=true, Loot=true,
+        Weapons=true, Tools=true, Collectibles=true, Objectives=true, TestObjects=true }) do define("ESP", key, value) end
     define("ESP", "MaxDistance", 1500, 10, 5000)
     define("ESP", "MaxElements", 64, 1, 128)
     define("ESP", "RefreshRate", 20, 5, 60)
+    for name, color in pairs({ PlayerColor="268BFF", NPCColor="67C9FF", ItemColor="F0C15C", TargetColor="FFFFFF" }) do
+        define("ESP", name, color)
+    end
     define("Flight", "Enabled", false)
     define("Flight", "Speed", 40, 1, 120)
     define("Flight", "VerticalSpeed", 30, 1, 100)
@@ -38,6 +44,16 @@ return function(_import)
     define("Player", "ServerGodmode", false)
     define("Settings", "MenuKey", "LeftControl")
     define("Settings", "Scale", 1, 0.65, 1.3)
+    define("Settings", "Performance", "Balanced", nil, nil, { "Low", "Balanced", "High" })
+    define("Settings", "Theme", "Blue", nil, nil, { "Blue", "Cyan" })
+    define("Settings", "Adapter", "Auto", nil, nil, { "Auto", "GenericRobloxAdapter", "CustomGameAdapter" })
+    local schemaSize = 0
+    for _ in pairs(schema) do schemaSize += 1 end
+    local presets = {
+        Low = { ["ESP.MaxElements"]=24, ["ESP.RefreshRate"]=10, ["ESP.Skeleton"]=false, ["ESP.Lines"]=false, ["ESP.HeadMarker"]=false },
+        Balanced = { ["ESP.MaxElements"]=64, ["ESP.RefreshRate"]=20, ["ESP.Skeleton"]=false, ["ESP.Lines"]=false, ["ESP.HeadMarker"]=false },
+        High = { ["ESP.MaxElements"]=96, ["ESP.RefreshRate"]=30, ["ESP.Skeleton"]=true, ["ESP.Lines"]=false, ["ESP.HeadMarker"]=true },
+    }
 
     local keyNames = {}
     local enumAvailable, enumItems = pcall(function() return Enum.KeyCode:GetEnumItems() end)
@@ -67,6 +83,9 @@ return function(_import)
                 return false, "Use um número inteiro: " .. path
             end
         elseif type(value) == "string" then
+            if path:match("^ESP%..*Color$") and (#value ~= 6 or not value:match("^[%x]+$")) then
+                return false, "Use RGB hexadecimal com seis dígitos: " .. path
+            end
             if #value == 0 or #value > 32 or not value:match("^[%w_]+$") then return false, "Texto inválido: " .. path end
             if rule.Choices and not table.find(rule.Choices, value) then return false, "Opção inválida: " .. path end
             if path:match("Key$") and (value == "Unknown" or value == "Escape" or value == "Return") then
@@ -143,7 +162,7 @@ return function(_import)
             local ok, reason = validate(path, value)
             if not ok then return false, reason end
             count += 1
-            if count > 80 then return false, "Perfil excedeu o limite" end
+            if count > schemaSize then return false, "Perfil excedeu o limite" end
             candidate[path] = value
         end
         local bindsOk, bindsReason = validateBinds(candidate)
@@ -154,6 +173,13 @@ return function(_import)
             if oldValues[path] ~= value then self:_notify(path, value) end
         end
         return true
+    end
+
+    function ConfigManager:ApplyPreset(name)
+        if type(name) ~= "string" or not presets[name] then return false, "Preset inválido" end
+        local values = table.clone(presets[name])
+        values["Settings.Performance"] = name
+        return self:Import(values)
     end
 
     function ConfigManager:Reset()

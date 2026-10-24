@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ref", default="v1.0.1")
+    parser.add_argument("--ref", default="v4.0.0")
     parser.add_argument("--report", type=Path, default=ROOT / "docs/github-check.json")
     args = parser.parse_args()
     if not args.ref or ".." in args.ref or any(char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-" for char in args.ref):
@@ -23,7 +23,7 @@ def main():
         url = "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/" + quote(args.ref, safe="/") + "/" + relative
         record = {"path": relative, "url": url, "passed": False}
         try:
-            with urlopen(Request(url, headers={"User-Agent": "VW-Menu-Public-Verification/1.0.1", "Cache-Control": "no-cache"}), timeout=25) as response:
+            with urlopen(Request(url, headers={"User-Agent": "VW-Menu-Public-Verification/4.0", "Cache-Control": "no-cache"}), timeout=25) as response:
                 body = response.read(2 * 1024 * 1024 + 1)
                 record["status"] = response.status
                 if len(body) > 2 * 1024 * 1024:
@@ -41,7 +41,7 @@ def main():
               "scope": "Public HTTP status and exact local/remote file comparison; no code execution",
               "results": results, "passed": all(item["passed"] for item in results)}
     args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    args.report.write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
     return 0 if report["passed"] else 1
 
 

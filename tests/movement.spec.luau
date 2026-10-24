@@ -2,9 +2,10 @@
 -- Explicit doubles exercise module decisions/lifecycles only. They do not model
 -- Roblox physics, networking, replication, server authority or input scheduling.
 local assertions = 0
+local failures = {}
 local function check(condition, label)
 	assertions += 1
-	assert(condition, label)
+	if not condition then table.insert(failures, label) end
 end
 
 local VectorMethods = {}
@@ -315,4 +316,200 @@ do
 	module:Destroy()
 end
 
+do
+	local ctx, humanoid, root = context()
+	ctx.Config.Values["Speed.WalkSpeed"], ctx.Config.Values["Speed.Multiplier"] = 60, 2
+	root.AssemblyLinearVelocity = vector(3, 0, 4)
+	local module = Speed.new(ctx):Init()
+	module:Enable(); module:Step(0.21)
+	check(ctx.Diagnostics.Values.RequestedSpeed == 120, "Speed diagnostics preserve the raw requested speed before policy clamping")
+	check(ctx.Diagnostics.Values.AppliedSpeed == math.round(humanoid.WalkSpeed * 10) / 10, "Speed diagnostics distinguish assigned WalkSpeed from requested speed")
+	check(ctx.Diagnostics.Values.EffectiveSpeed == 5, "Speed diagnostics measure actual horizontal root velocity")
+	check(ctx.Diagnostics.Values.SpeedStatus == "SERVER RESTRICTION", "Policy-clamped speed surfaces server restriction")
+	ctx.Bridge.LastCorrectionAt = os.clock()
+	ctx.Bridge.Latest.ConfirmedCorrection = {Sequence = 1, Reason = "TEST_SERVER_HOOK"}
+	module:Step(0.21)
+	check(ctx.Diagnostics.Values.SpeedCorrection == "SERVER_REPORTED", "Speed recognizes explicit bridge-confirmed correction")
+	ctx.Bridge.Available = false
+	module:Step(0.21)
+	check(ctx.Diagnostics.Values.SpeedCorrection ~= "SERVER_REPORTED", "Speed never presents cached correction as a current server report after bridge loss")
+	module:Disable()
+	check(ctx.Diagnostics.Values.SpeedStatus == "MODULE DISABLED" and ctx.Diagnostics.Values.RequestedSpeed == 0, "Disabled speed clears its active request diagnostics")
+	module:Destroy()
+end
+
+do
+	local ctx = context()
+	local module = Speed.new(ctx):Init()
+	module:Enable()
+	local oldCallback = ctx.Bridge.Requests[1].Callback
+	ctx.Player.Character = nil
+	module:Step(0.21)
+	oldCallback({Ok = false, Reason = "OLD_CHARACTER"})
+	check(module.enabled and ctx.Config.Values["Speed.Enabled"], "Speed ignores an old character acknowledgement during respawn gap")
+	check(ctx.Diagnostics.Values.SpeedStatus == "CHARACTER NOT FOUND", "Speed reports missing character explicitly")
+	module:Destroy()
+end
+
+do
+	local ctx, _, root = context()
+	local module = Flight.new(ctx):Init()
+	module:Enable()
+	ctx.Services.Workspace.CurrentCamera.CFrame.LookVector = vector(0, 0.8, -0.6)
+	ctx.Services.UserInputService.Pressed.W = true
+	module:Step(0.1)
+	check(module.velocity.Z < 0 and module.velocity.Y == 0, "Flight flattens camera pitch for horizontal movement")
+	check(module.orientation.CFrame.LookVector.Y == 0, "Flight orientation remains level with a pitched camera")
+	ctx.Services.UserInputService.Pressed.E = true
+	module:Step(0.1)
+	check(module.velocity.Y > 0 and module.velocity.Y < 30, "Flight vertical input accelerates smoothly")
+	ctx.Services.UserInputService.Pressed.LeftShift = true
+	root.AssemblyLinearVelocity = vector(3, 12, 4)
+	module:Step(0.1)
+	check(ctx.Diagnostics.Values.FlightRequestedSpeed == 75, "Flight diagnostics report the actual boosted directional request")
+	check(ctx.Diagnostics.Values.FlightCommandedSpeed == math.round(module.velocity.Magnitude * 10) / 10, "Flight diagnostics expose smoothed constraint command separately")
+	check(ctx.Diagnostics.Values.FlightSpeed == 13, "Flight effective speed comes from measured root velocity, not constraint command")
+	ctx.Services.UserInputService.Pressed = {}
+	local movingSpeed = module.velocity.Magnitude
+	module:Step(0.1)
+	check(module.velocity.Magnitude < movingSpeed, "Flight decelerates to hover when movement keys are released")
+	ctx.Services.Workspace.CurrentCamera = nil
+	module:Step(0.1)
+	check(module.velocity.Magnitude == 0 and module.linear.VectorVelocity.Magnitude == 0, "Missing flight camera clears stale smoothed velocity")
+	ctx.Services.Workspace.CurrentCamera = {CFrame = {LookVector = vector(0, 0, -1)}}
+	module:Step(0.1)
+	check(module.velocity.Magnitude == 0, "Flight camera recovery without input remains hovering")
+	ctx.Bridge.LastCorrectionAt = os.clock()
+	ctx.Bridge.Latest.ConfirmedCorrection = {Sequence = 1, Reason = "TEST_SERVER_HOOK"}
+	ctx.Bridge.Available = false
+	module:Step(0.1)
+	check(ctx.Diagnostics.Values.FlightCorrection ~= "SERVER_REPORTED", "Flight ignores cached correction after bridge loss")
+	module:Destroy()
+end
+
+do
+	local ctx = context()
+	local module = Flight.new(ctx):Init()
+	module:Enable()
+	local oldCallback = ctx.Bridge.Requests[1].Callback
+	ctx.Player.Character = nil
+	module:Step(0.1)
+	oldCallback({Ok = false, Reason = "OLD_CHARACTER"})
+	check(module.enabled, "Flight ignores old character acknowledgement during respawn gap")
+	check(ctx.Diagnostics.Values.FlightStatus == "CHARACTER NOT FOUND", "Flight reports missing character explicitly")
+	module:Destroy()
+end
+
+do
+	local ctx = context()
+	local module = Health.new(ctx):Init()
+	module:Enable()
+	ctx.Bridge.Latest = {}
+	module:Step(0.21)
+	check(ctx.Diagnostics.Values.HealthStatus ~= "SERVER_OBSERVED", "Available bridge without numeric health is not a server health observation")
+	ctx.Player.Character = nil
+	module:Step(0.21)
+	check(ctx.Diagnostics.Values.HealthStatus == "CHARACTER NOT FOUND", "Health reports missing character explicitly")
+	module:Destroy()
+end
+
+do
+	local ctx, humanoid = context()
+	local module = Health.new(ctx):Init()
+	module:Enable(); module:ProbeLocalHealth()
+	ctx.Player.Character = character(12, 80)
+	module:Step(0.21)
+	check(humanoid.Health == 70, "Respawn restores the local probe on the previous humanoid")
+	module:Destroy()
+end
+
+do
+	local ctx = context()
+	local module = Health.new(ctx):Init()
+	module:Enable()
+	check(module:RequestDamage(10) == true, "Health submits an explicit server damage test")
+	local callback = ctx.Bridge.Requests[#ctx.Bridge.Requests].Callback
+	check(ctx.Diagnostics.Values.HealthDamageStatus == "PENDING", "Damage request is pending until a response arrives")
+	callback({Ok = true, Reason = "GODMODE_BLOCKED", Source = "SERVER", Data = {Health = 70}})
+	check(ctx.Diagnostics.Values.HealthDamageStatus == "SERVER_BLOCKED" and ctx.Diagnostics.Values.HealthDamageReason == "GODMODE_BLOCKED", "Damage gate blocking is distinguished from damage applied")
+	module:RequestDamage(10)
+	ctx.Bridge.Requests[#ctx.Bridge.Requests].Callback({Ok = true, Reason = "DAMAGE_APPLIED", Source = "SERVER", Data = {Health = 60}})
+	check(ctx.Diagnostics.Values.HealthDamageStatus == "SERVER_ACCEPTED" and ctx.Diagnostics.Values.ServerHealth == 60, "Damage acceptance uses actual server response health")
+	module:RequestDamage(10)
+	ctx.Bridge.Requests[#ctx.Bridge.Requests].Callback({Ok = false, Reason = "DAMAGE_LIMIT", Source = "SERVER", Data = {Health = 60}})
+	check(ctx.Diagnostics.Values.HealthDamageStatus == "SERVER_REJECTED", "Server damage rejection is explicit")
+	module:RequestDamage(10)
+	ctx.Bridge.Requests[#ctx.Bridge.Requests].Callback({Ok = false, Reason = "TIMEOUT", Source = "LOCAL", Data = {}})
+	check(ctx.Diagnostics.Values.HealthDamageStatus == "REQUEST_FAILED", "Local transport failure is not labeled server rejection")
+	local requests = #ctx.Bridge.Requests
+	check(module:RequestDamage(0 / 0) == false and #ctx.Bridge.Requests == requests, "Invalid diagnostic damage never reaches the bridge")
+	module:RestoreHealth()
+	ctx.Bridge.Requests[#ctx.Bridge.Requests].Callback({Ok = false, Reason = "RESTORE_DISABLED", Source = "SERVER", Data = {Health = 60}})
+	check(ctx.Diagnostics.Values.HealthRestoreStatus == "SERVER_REJECTED", "Restore diagnostics retain actual server policy denial")
+	module:Destroy()
+end
+
+for _, descriptor in ipairs({{Name = "Speed", Factory = Speed, Path = "Speed.WalkSpeed"}, {Name = "Flight", Factory = Flight, Path = "Flight.Speed"}}) do
+	local ctx, humanoid = context()
+	local module = descriptor.Factory.new(ctx):Init()
+	module:Enable()
+	ctx.Bridge.Request = function(_self, _action, _payload, callback)
+		callback({Ok = false, Reason = "QUEUE_FULL", Source = "LOCAL", Data = {}})
+		return false, "QUEUE_FULL"
+	end
+	ctx.Config.Values[descriptor.Path] = 50
+	module:UpdateConfig(descriptor.Path)
+	local completed = pcall(function() module:Step(0.31) end)
+	check(completed and not module.enabled, descriptor.Name .. " stops safely after synchronous request rejection in Step")
+	check(humanoid.WalkSpeed == 16 and humanoid.AutoRotate == true, descriptor.Name .. " synchronous rejection restores owned character properties")
+	check(ctx.Diagnostics.Values[descriptor.Name .. "Status"] == "SERVER RESTRICTION", descriptor.Name .. " preserves restriction status after immediate denial")
+	module:Destroy()
+end
+
+for _, descriptor in ipairs({{Name = "Speed", Factory = Speed}, {Name = "Flight", Factory = Flight}}) do
+	local ctx = context()
+	local module = descriptor.Factory.new(ctx):Init()
+	module:Enable()
+	local oldCallback = ctx.Bridge.Requests[1].Callback
+	ctx.Player.Character = character(12, 80)
+	oldCallback({Ok = false, Reason = "OLD_CHARACTER", Source = "SERVER"})
+	check(module.enabled, descriptor.Name .. " ignores old character rejection even before the next frame observes respawn")
+	module:Destroy()
+end
+
+do
+	local ctx = context()
+	ctx.Config.Values["Player.ServerGodmode"] = true
+	local module = Health.new(ctx):Init()
+	module:Enable()
+	local oldCallback = ctx.Bridge.Requests[1].Callback
+	oldCallback({Ok = true, Reason = "OK", Source = "SERVER", Data = {Godmode = true}})
+	ctx.Bridge.Latest.Godmode = true
+	ctx.Player.Character = character(12, 80)
+	module:Step(0.21)
+	check(ctx.Diagnostics.Values.ServerGodmode == false, "Health never carries confirmed protection across character identities")
+	oldCallback({Ok = true, Reason = "OK", Source = "SERVER", Data = {Godmode = true}})
+	check(ctx.Diagnostics.Values.ServerGodmode == false, "Health ignores an old-character protection acknowledgement")
+	module:Destroy()
+end
+
+do
+	local ctx = context()
+	local module = Health.new(ctx):Init()
+	module:Enable(); module:RequestDamage(10)
+	local callback = ctx.Bridge.Requests[#ctx.Bridge.Requests].Callback
+	ctx.Config.Values["Player.ServerGodmode"] = true
+	module:UpdateConfig()
+	callback({Ok = true, Reason = "DAMAGE_APPLIED", Source = "SERVER", Data = {Health = 60}})
+	check(ctx.Diagnostics.Values.HealthDamageStatus == "SERVER_ACCEPTED", "Changing the godmode request does not discard an independent damage response")
+	module:RequestDamage(10)
+	callback = ctx.Bridge.Requests[#ctx.Bridge.Requests].Callback
+	module:Disable()
+	callback({Ok = true, Reason = "DAMAGE_APPLIED", Source = "SERVER", Data = {Health = 50}})
+	check(ctx.Diagnostics.Values.ServerHealth == 60, "Disabled health ignores delayed diagnostic action response")
+	module:Destroy()
+end
+
+for _, failure in ipairs(failures) do print("FAIL: " .. failure) end
+assert(#failures == 0, tostring(#failures) .. " movement assertions failed")
 print("PASS movement.spec: " .. tostring(assertions) .. " assertions; boundary doubles only, no physics or replication")

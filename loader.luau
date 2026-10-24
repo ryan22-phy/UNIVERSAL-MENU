@@ -2,7 +2,7 @@
 local OWNER = "ryan22-phy"
 local REPOSITORY = "UNIVERSAL-MENU"
 local BRANCH = "main"
-local RELEASE_REF = "v1.0.1"
+local RELEASE_REF = "v4.0.0"
 local environment = _G
 local function log(message) print("[ VW ] " .. message) end
 local function errorPanel(message)
@@ -36,6 +36,7 @@ local function fail(stage,file,original,fix)
     error(message,0)
 end
 log("Starting loader...")
+print("[VW] Loader initialized")
 log("Checking environment...")
 if type(getgenv)=="function" then
     local ok,value=pcall(getgenv)
@@ -62,6 +63,7 @@ if type(sourceRef)~="string" or sourceRef=="" or #sourceRef>180 or sourceRef:fin
     fail("environment","loader.luau","Invalid VWMenuRef: "..tostring(sourceRef),"Remova o override ou use uma tag, branch ou SHA deste repositório")
 end
 local url="https://raw.githubusercontent.com/"..OWNER.."/"..REPOSITORY.."/"..sourceRef.."/dist/VWMenu.luau"
+print("[VW] Environment checked")
 local function validBody(body)
     if type(body)~="string" then return false,"Body is not a string" end
     if #body==0 or #body>2*1024*1024 then return false,"Body empty or exceeds 2 MiB" end

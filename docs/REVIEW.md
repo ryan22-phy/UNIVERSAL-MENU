@@ -1,3 +1,5 @@
+> Histórico 1.x. Estado atual: [validação V4](V4_VALIDATION.md) e [plano V4](V4_PLAN.md).
+
 # Revisão de integração
 
 Revisão independente dos fontes, seguida de regressões locais. Sem execução

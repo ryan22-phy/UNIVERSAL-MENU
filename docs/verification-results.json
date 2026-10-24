@@ -1,5 +1,5 @@
 {
-  "timestampUTC": "2026-10-24T19:19:21.426058+00:00",
+  "timestampUTC": "2026-10-24T20:03:55.987438+00:00",
   "scope": "Luau syntax and local logic with boundary doubles; Python build integrity",
   "robloxStudio": "NOT_CONNECTED_NOT_EXECUTED",
   "xeno": "NOT_EXECUTED",
@@ -9,31 +9,31 @@
       "name": "build",
       "passed": true,
       "exitCode": 0,
-      "output": "Built dist/VWMenu.luau: 14 modules, 137993 bytes, sha256 3b6007aed0014a6d5ec82b593990b70c16a6b8a691fe12ac3f267dab2b97bc83"
+      "output": "Built dist/VWMenu.luau: 16 modules, 195247 bytes, sha256 54169f965ad76c911d0fb4778b32ccdca8e5294dd7e6951b2b47c60438f88501"
     },
     {
-      "name": "compile:all 32 Luau files",
+      "name": "compile:all 36 Luau files",
       "passed": true,
       "exitCode": 0,
-      "output": "Compiled 7 KLOC into 374 KB bytecode (read 0.02s, parse 0.01s, compile 0.02s)"
+      "output": "Compiled 10 KLOC into 538 KB bytecode (read 0.02s, parse 0.01s, compile 0.03s)"
     },
     {
       "name": "logic:standalone suites",
       "passed": true,
       "exitCode": 0,
-      "output": "PASS bridge.spec: 9 assertions (mock transport)\nPASS config.spec: 25 assertions\nPASS entities.spec: 6 assertions (object doubles)\nPASS server_policy.spec: 37 assertions\nui.spec: 94 logic checks passed (mock GUI; no rendering validation)"
+      "output": "PASS adapters.spec: common rigs, teams, custom mappings, item lifecycle and fallback\nPASS adapter + registry integration: categories, opt-in, collect/removal, 512 cap and cleanup\nPASS bridge.spec: 11 assertions (mock transport)\nPASS config.spec: 45 assertions\nPASS entities.spec: 7 assertions (object doubles)\nPASS server_policy.spec: 37 assertions\nui.spec: 187 logic checks passed (mock GUI; no rendering validation)"
     },
     {
       "name": "logic:combat_visuals",
       "passed": true,
       "exitCode": 0,
-      "output": "CombatVisuals: lifecycle, priorities, locking/delay, head fallback, death, prediction, smoothing, input capture, revocation, occlusion and cap checks passed"
+      "output": "CombatVisuals: lifecycle, priorities, locking/delay, head fallback, death, prediction, smoothing, input capture, revocation, occlusion and cap checks passed\nPASS V4 aim: dynamic teams, head/fallback lifecycle, stability and current camera"
     },
     {
       "name": "logic:movement",
       "passed": true,
       "exitCode": 0,
-      "output": "PASS movement.spec: 50 assertions; boundary doubles only, no physics or replication"
+      "output": "PASS movement.spec: 94 assertions; boundary doubles only, no physics or replication"
     },
     {
       "name": "logic:loader",
@@ -45,48 +45,58 @@
       "name": "logic:bootstrap",
       "passed": true,
       "exitCode": 0,
-      "output": "PASS bootstrap: 34 checks; native boundaries and UI stub, no rendering validation"
+      "output": "PASS bootstrap: 35 checks; native boundaries and UI stub, no rendering validation"
+    },
+    {
+      "name": "logic:esp_v4",
+      "passed": true,
+      "exitCode": 0,
+      "output": "ESP V4: independent native features, R6/R15 skeletons, teams/colors, seven item filters, selection, lifecycle and 100-entity budgets passed"
     },
     {
       "name": "python:unittest",
       "passed": true,
       "exitCode": 0,
-      "output": "test_deterministic_bundle (test_build.BuildTests.test_deterministic_bundle) ... ok\ntest_json_artifacts (test_build.BuildTests.test_json_artifacts) ... ok\ntest_module_graph_is_closed (test_build.BuildTests.test_module_graph_is_closed) ... ok\ntest_no_server_policy_in_client (test_build.BuildTests.test_no_server_policy_in_client) ... ok\ntest_public_release_configuration (test_build.BuildTests.test_public_release_configuration) ... ok\ntest_rojo_paths_exist_and_server_policy_is_private (test_build.BuildTests.test_rojo_paths_exist_and_server_policy_is_private) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.080s\n\nOK"
+      "output": "test_deterministic_bundle (test_build.BuildTests.test_deterministic_bundle) ... ok\ntest_json_artifacts (test_build.BuildTests.test_json_artifacts) ... ok\ntest_module_graph_is_closed (test_build.BuildTests.test_module_graph_is_closed) ... ok\ntest_no_server_policy_in_client (test_build.BuildTests.test_no_server_policy_in_client) ... ok\ntest_public_release_configuration (test_build.BuildTests.test_public_release_configuration) ... ok\ntest_rojo_paths_exist_and_server_policy_is_private (test_build.BuildTests.test_rojo_paths_exist_and_server_policy_is_private) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.066s\n\nOK"
     }
   ],
   "sourceHashes": {
-    "config/ClientPolicy.luau": "90bf3c112110d985b604ebffb697f720ba566c01a6f79404aa53823ff6ce47e9",
-    "dist/VWMenu.luau": "3b6007aed0014a6d5ec82b593990b70c16a6b8a691fe12ac3f267dab2b97bc83",
-    "loader.luau": "82581f610fc0274ad458349146af793c6b6daae090c4b983ffe892d74dbcbeca",
+    "config/ClientPolicy.luau": "dd08d986adf0e5df8e9427cf49d68b3994631c8e7fb2625cfe0c97cd30e24013",
+    "dist/VWMenu.luau": "54169f965ad76c911d0fb4778b32ccdca8e5294dd7e6951b2b47c60438f88501",
+    "loader.luau": "68fd586f3f5756467e5c511cb8532ad28e548c9e41fc9599cba2ee67b9ea8fe5",
     "smoke-test.luau": "d6721d1af830c53437bb15a8eedb3ad078219bbf7d615de61c87d6657d8df9a1",
-    "src/client/AimAssist.luau": "f41c1babe143125a78788027f7f8a1bd208fa768514e673bec2d2f493ed5be4f",
-    "src/client/ClientController.luau": "22998825e02f66d106cd41824049ba6fc9d8d5aaa03e2eda0c28ae8424540cfd",
-    "src/client/Compatibility.luau": "7104a73ef95c7b12295c99a3b44f3c8712383430775b932e6f3b45a196c1938d",
-    "src/client/EntityRegistry.luau": "fa4a7cd54270ddcebd1d5868cf022d4ec441269a298dd44bf1da41351857e370",
-    "src/client/ESPManager.luau": "413a8518c9d4709a330c6cbdff2057a5b3269845f891772dfcc7b4f35bc0d5ec",
-    "src/client/FlightController.luau": "acbe54667bf16306d391dd946d50d9f905b9997891987f4fb05fa3c58f758c4d",
-    "src/client/HealthDiagnostics.luau": "723086a517debabe1ec2ecc0ced6d0b3f17eee6b69067b2617e4705412dae739",
+    "src/client/AimAssist.luau": "6c4f7d801d1fd65b479d0e20df44b9713dc0430cd65a1ce12a0ec7858d56eefe",
+    "src/client/ClientController.luau": "2d55d1d0a410919a02295dd0092e4a39781eaf934953651a5984fdad2dff6867",
+    "src/client/Compatibility.luau": "b6785c43673235fc7641336f8462b343200be5d5fddbec640de34f6a656e932b",
+    "src/client/EntityRegistry.luau": "6b7089e60aca269f56cee684e1580215ff7d17a3739e7b2d3b0251a3dbaed8d2",
+    "src/client/ESPManager.luau": "2955ef7ad3284449619084a61884acad11cc94414ccabfd02bdde29d999ec494",
+    "src/client/FlightController.luau": "1d12f40218ff41d8da1cb2d955be94affbeb31c417d166c3e73e0a0d93383307",
+    "src/client/GameAdapterManager.luau": "47883b8740cb508a2a5804535eb317f180248288aaede2970b527e7861bd1219",
+    "src/client/HealthDiagnostics.luau": "ebc6f111bf3c839fcba1787fa3d6e4303dca8f03273f8244b566ebfb37fb3326",
     "src/client/Main.client.luau": "85dfef29d17305db33b0108e38094f715f67ba888b80fe26cf744c5f08549d36",
-    "src/client/ServerBridge.luau": "0bf8fcf2f283d4c093deb6d2cba7fa4c03b2757e8384c1a79d4e9abf9aedbcf9",
-    "src/client/SpeedController.luau": "679b1b80503c5393fca01b0b76f5fee51ea209753c46d1ffa312b4deda8d3d7e",
+    "src/client/ServerBridge.luau": "4b1c02ef0730bbfac175dc7a822d6051a8985718c336dc68db250c06ef134a52",
+    "src/client/SpeedController.luau": "35fe5e7b61ae138a9e357da22de4bd24c13778ebe29544dabb59441e099bc1a5",
+    "src/client/UniversalGameAdapter.luau": "64967c0f9c4df6ee6becd9940107d8ca1c9aa59f5af91e892c739d524f313d2c",
     "src/config/ServerPolicy.luau": "b25cb9f9f7a66d0a2a906576a27a0f5ae663b3c93fd5ed6c892402b22d4ff434",
     "src/server/DamageTestController.luau": "ceea572bfe04060dc3d5ee6db66ffd893749dbbcbcef506df93cab677547ee10",
     "src/server/PermissionService.luau": "c2523c89f025bd99d4fdf0a260b159fd8548c1a1b1ea9eb1eb32716c49dfeefd",
     "src/server/ServerTestService.luau": "a1a0f9ed679df1ac4077f50248afdab6e59e2e50b68f31c9524cb8fa259f744a",
     "src/ServerBootstrap.server.luau": "4c073e24e1a1f286d207f976025fadd534dc05920ad9c20f98695958b32f4457",
     "src/shared/CleanupManager.luau": "4578f3acdcc64f36fca78933fb2a2e0a1e935b3b75302be053610f0d1bc43fed",
-    "src/shared/ConfigManager.luau": "bae8cc03a31975f49f66eccde4db8b6bccb9ae3acec11f46e46d84e262f5c065",
+    "src/shared/ConfigManager.luau": "26cd48caaff77e8692b3a607529ae288620e38df0efea35c80f6283b6f4649fc",
     "src/shared/Diagnostics.luau": "12612c34303367bf2f44ba4d0ffb644e620c725f7896df71e3a7d942280712ad",
-    "src/shared/UIManager.luau": "aa1a9aa55ade9ff552baa415e3838d2e6e74dedaff5b532d64773046ad83045c",
-    "tests/bootstrap.spec.luau": "04637fcd9d95cdadd25f5a8c3266a2b3c429edd81e9a3d516761ba2cd491320d",
-    "tests/bridge.spec.luau": "78908b10da8eecde395db30117086d8b9f1c8f3eee999e24e2629d9f547a0318",
-    "tests/combat_visuals.spec.luau": "a237ff79a7c4c555600f4872a894e3abcb04de6f7f8f4efd916c44c7133adaca",
-    "tests/config.spec.luau": "cf6a80ec16b50391747580fe19eb19706dff8cfc3cb61a33352d420c9eb211b8",
-    "tests/entities.spec.luau": "1bf81c3f76c13dc96cf2b5ae9bc88b666bc17b1185a75716ef5356f1bfa3396d",
-    "tests/loader.spec.luau": "dd24aad04e9380d158d15637404298381f43ad60364c488807ae9c369789933c",
-    "tests/movement.spec.luau": "72ce228f6a5d2570da0437f71a0cace8059d555a681a678580efcadf09fff820",
+    "src/shared/UIManager.luau": "1bb4f387bbd6f983ebae08c1762fa83dd67a20377cab41752d4c1011d39f8a6a",
+    "tests/adapters.spec.luau": "ce2d1cd33bfa412a0332dd387e7dfae4ca87358c07d39102a8625dcc708e8093",
+    "tests/bootstrap.spec.luau": "43b1f8371b67f9cf5c682c190089e12392fc865ea90f85e3032906317c010215",
+    "tests/bridge.spec.luau": "0d6b3329a36a6dc4f5fd8d0986c18291aa7c375d85cbf89d6e1bb834c45c1771",
+    "tests/combat_visuals.spec.luau": "deb04c6ccf2bf6f29e85d0f54049a7eb731d4a0ea7bd70efcbc8201c54fe4080",
+    "tests/config.spec.luau": "5021a5a2f443dd435191553e16035851c83ed2fd4c497674189ecb827dc79aa7",
+    "tests/entities.spec.luau": "f3c76a3498f76d297188c90990b14c656c315a4117418b731487101e41785b9a",
+    "tests/esp_v4.spec.luau": "52e23fa3726e6b22a127444e7d3eefdb877cab3464407cb0ab1f7dc8bf666c2a",
+    "tests/loader.spec.luau": "d995b9a1c3aab8d086d70bca60859ce03e7bd2a0f1a5940dd0f0bd99eee98dd6",
+    "tests/movement.spec.luau": "304f02eb92d040810d6c364f518573f3091ec7d552ec301b8aac2679f36d4639",
     "tests/server_policy.spec.luau": "2e0071731254f48fba4f2bbf557dab5728b6a0aaed07e7bdee546c8b40fb709d",
-    "tests/ui.spec.luau": "63da60e72390c6e3e6b74d881b3b9efd37a59ceee719901fc95a9b36d134a84c"
+    "tests/ui.spec.luau": "45c2811544324108690e51395196bcd4f487d517cb41424bdafd8f98eef781e6"
   },
   "passed": true
 }

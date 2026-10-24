@@ -13,6 +13,8 @@ return function(import)
         if self._destroyed or type(response) ~= "table" then return end
         local pending = self._pending[response.Id]
         if not pending or type(response.Ok) ~= "boolean" then return end
+        -- Provenance is assigned at the correlated RemoteEvent boundary, not trusted from payload.
+        response.Source = "SERVER"
         self._pending[response.Id] = nil
         self.LastSeen = os.clock()
         if type(response.Data) == "table" then
@@ -49,18 +51,18 @@ return function(import)
     function ServerBridge:Request(action, payload, callback)
         if self._destroyed then return false, "UNLOADED" end
         if not self._request then
-            if callback then callback({Ok=false,Reason="NO_SERVER",Data={Authorized=false}}) end
+            if callback then callback({Ok=false,Reason="NO_SERVER",Source="LOCAL",Data={Authorized=false}}) end
             return false, "NO_SERVER"
         end
         if action ~= "Hello" and not self.Available then
-            if callback then callback({Ok=false,Reason="NO_AUTHORIZED_SESSION",Data={Authorized=false}}) end
+            if callback then callback({Ok=false,Reason="NO_AUTHORIZED_SESSION",Source="LOCAL",Data={Authorized=false}}) end
             return false, "NO_AUTHORIZED_SESSION"
         end
         local pendingCount = 0
         for _ in pairs(self._pending) do pendingCount += 1 end
         if pendingCount >= 16 then
             if callback then
-                local completed, err=pcall(callback,{Ok=false,Reason="QUEUE_FULL",Data={Authorized=false}})
+                local completed, err=pcall(callback,{Ok=false,Reason="QUEUE_FULL",Source="LOCAL",Data={Authorized=false}})
                 if not completed then self.ctx.Diagnostics:Log("Bridge","ERROR",err) end
             end
             return false, "QUEUE_FULL"
@@ -73,7 +75,7 @@ return function(import)
         end)
         if not ok then
             self._pending[id] = nil
-            if callback then callback({Ok=false,Reason=tostring(err),Data={Authorized=false}}) end
+            if callback then callback({Ok=false,Reason=tostring(err),Source="LOCAL",Data={Authorized=false}}) end
             return false, tostring(err)
         end
         return true
@@ -87,7 +89,7 @@ return function(import)
             if now - pending.Time > 4 then
                 self._pending[id] = nil
                 self.ctx.Diagnostics:Log("Bridge", "TIMEOUT", pending.Action)
-                if pending.Callback then pcall(pending.Callback, {Ok=false,Reason="TIMEOUT",Data={Authorized=false}}) end
+                if pending.Callback then pcall(pending.Callback, {Ok=false,Reason="TIMEOUT",Source="LOCAL",Data={Authorized=false}}) end
             end
         end
         if self.Available and now - self.LastSeen > 6 then

@@ -57,6 +57,11 @@ function fakeInstance.new(className)
 		instance[event] = signal()
 	end
 	function instance:GetChildren() return self.Children end
+	function instance:GetPropertyChangedSignal(property)
+		self.PropertySignals = self.PropertySignals or {}
+		self.PropertySignals[property] = self.PropertySignals[property] or signal()
+		return self.PropertySignals[property]
+	end
 	function instance:IsA(name)
 		if name == "GuiObject" then return self.ClassName ~= "UIListLayout" and self.ClassName ~= "UIPadding" and self.ClassName ~= "UIStroke" and self.ClassName ~= "UICorner" and self.ClassName ~= "UIScale" end
 		return self.ClassName == name
@@ -103,7 +108,7 @@ local gui = fakeInstance.new("ScreenGui")
 gui.AbsoluteSize = vector.new(1280, 720)
 local camera = { ViewportSize = vector.new(1280, 720) }
 local diag = {
-	Snapshot = function() return { Values = { ["Flight.CorrectionSuspected"] = false }, Events = { { Module = "Test", Status = "info", Detail = "ready" } } } end,
+	Snapshot = function() return { Values = { ["Flight.CorrectionSuspected"] = false, ["Aim.Status"]="MODULE READY", ["ESP.Status"]="DISABLED", ["Adapter.Name"]="GenericRobloxAdapter", ["Aim.TargetPart"]="Head", ["Aim.StabilityDeg"]=0.5, ["ESP.VisualObjects"]=12, ["Timing.AimMs"]=0.2 }, Events = { { Module = "Test", Status = "info", Detail = "ready" } } } end,
 	Log = function() end,
 }
 local ctx = {
@@ -119,6 +124,8 @@ local ctx = {
 		Export = function() return "{\"Aim.Enabled\":false}" end,
 		Import = function(json) actions.Import += 1 return json == "{}", "invalid json" end,
 		SaveProfile = function(name) profiles[name] = config:Snapshot() return true end,
+		ListProfiles = function() local names = {} for name in pairs(profiles) do table.insert(names,name) end return names end,
+		ApplyPreset = function(name) actions.Preset = (actions.Preset or 0)+1 return config:ApplyPreset(name) end,
 		LoadProfile = function(name) return config:Import(profiles[name]) end,
 		Reset = function() config:Reset() return true end,
 	},
@@ -234,6 +241,75 @@ config:Set("Aim.FOV", 123)
 button("Carregar").Activated:Fire()
 check(config:Get("Aim.FOV") == 400, "in-memory profile must restore saved values")
 
+
+check(ui.Brand.Text == "VW MENU", "V4 brand header")
+check(find(function(item) return item.Text == "UNIVERSAL EDITION" end) ~= nil, "edition header")
+check(find(function(item) return item.Text == "v4.0" end) ~= nil, "version header")
+for _, component in ipairs({"ToggleSwitch","ModernSlider","KeybindPicker","ColorPicker","Dropdown","MultiSelect","SearchBox","SectionHeader","StatusIndicator","Tooltip","Notification","ProfileSelector"}) do
+    check(type(ui[component]) == "function", "reusable component API: " .. component)
+end
+local headOnlyRow = find(function(item) return item.Name == "Head Only" end)
+button("       OFF", headOnlyRow).Activated:Fire()
+check(config:Get("Aim.Fallback") == false, "Head Only inverts the canonical fallback boolean")
+button("       ON", headOnlyRow).Activated:Fire()
+check(config:Get("Aim.Fallback"), "Head Only off restores fallback")
+local fallbackPartRow = find(function(item) return item.Name == "Peça de fallback" end)
+button("HumanoidRootPart   ▾", fallbackPartRow).Activated:Fire()
+button("UpperTorso", fallbackPartRow).Activated:Fire()
+check(config:Get("Aim.FallbackPart") == "UpperTorso", "fallback part dropdown is configured")
+local colorRow = find(function(item) return item.Name == "Cor de jogadores" end)
+local colorField = find(function(item) return item.Name == "ColorPicker" end, colorRow)
+colorField.Text = "#12abEF"; colorField.FocusLost:Fire()
+check(config:Get("ESP.PlayerColor") == "12ABEF" and colorField.Text == "#12ABEF", "color field normalizes validated RGB")
+local swatch = find(function(item) return item.Name == "ColorSwatch" end, colorRow)
+check(swatch.BackgroundColor3 == "18,171,239", "color swatch renders actual RGB")
+colorField.Text = "#12345X"; colorField.FocusLost:Fire()
+check(config:Get("ESP.PlayerColor") == "12ABEF" and ui.StatusError, "invalid RGB preserves config")
+local entitiesRow = find(function(item) return item.Name == "Entidades" end)
+button("3 / 3 selecionados   ▾", entitiesRow).Activated:Fire()
+button("✓  NPCs", entitiesRow).Activated:Fire()
+check(not config:Get("ESP.NPCs") and config:Get("ESP.Players"), "multiselect updates only chosen config path")
+local wallsRow = find(function(item) return item.Name == "Visibilidade do overlay" end)
+button("Visible Only   ▾", wallsRow).Activated:Fire(); button("Always On Top", wallsRow).Activated:Fire()
+check(config:Get("ESP.ThroughWalls") == true, "Always On Top maps to canonical true")
+button("Always On Top   ▾", wallsRow).Activated:Fire(); button("Visible Only", wallsRow).Activated:Fire()
+check(config:Get("ESP.ThroughWalls") == false, "Visible Only maps to canonical false")
+config:Set("ESP.Enabled", true)
+local presetRow = find(function(item) return item.Name == "Preset de desempenho" end)
+button("Balanced   ▾", presetRow).Activated:Fire(); button("High", presetRow).Activated:Fire()
+check(actions.Preset == 1 and config:Get("ESP.MaxElements") == 96 and config:Get("ESP.Skeleton"), "preset UI calls actual atomic action")
+check(config:Get("ESP.Enabled"), "preset UI preserves feature enable request")
+local themeRow = find(function(item) return item.Name == "Tema" end)
+button("Blue   ▾", themeRow).Activated:Fire(); button("Cyan", themeRow).Activated:Fire()
+check(ui.Brand.TextColor3 == "103,201,255", "Cyan visibly changes existing window accent")
+check(swatch.BackgroundColor3 == "18,171,239", "UI theme preserves configured ESP colors")
+config:Set("Settings.Theme", "Blue")
+check(ui.Brand.TextColor3 == "38,139,255", "Blue restores window accent")
+ui.SearchField.Text = "esqueleto"; ui.SearchField:GetPropertyChangedSignal("Text"):Fire()
+check(find(function(item) return item.Name == "Esqueleto" end).Visible, "search keeps matching rows")
+check(not find(function(item) return item.Name == "Caixas" end).Visible, "search filters nonmatching rows")
+check(ui.Tabs.Visuals.Visible, "search never hides navigation")
+ui.SearchField.Text = ""; ui.SearchField:GetPropertyChangedSignal("Text"):Fire()
+check(find(function(item) return item.Name == "Caixas" end).Visible, "clearing search restores rows")
+profiles["Zeta profile"] = config:Snapshot()
+profiles["Alpha profile"] = config:Snapshot()
+local profileRow = find(function(item) return item.Name == "Perfis disponíveis" end)
+button("Selecionar perfil   ▾", profileRow).Activated:Fire()
+button("Alpha profile", profileRow).Activated:Fire()
+check(ui.ProfileName.Text == "Alpha profile", "profile selector uses actual listed session names")
+config:Set("Aim.FOV", 222); button("Carregar").Activated:Fire()
+check(config:Get("Aim.FOV") == 400, "selected profile loads the actual saved snapshot")
+local profileButtons = #profileRow:GetChildren()
+for _=1,5 do button("Alpha profile   ▾",profileRow).Activated:Fire(); button("Alpha profile   ▾",profileRow).Activated:Fire() end
+check(#profileRow:GetChildren() == profileButtons, "profile reopening reuses option controls")
+for index=1,8 do ui:_status("bounded notification " .. index) end
+check(#ui.Notifications == 3, "notifications retain at most three frames")
+ui:Step(4)
+check(#ui.Notifications == 0, "notifications expire through owned Step lifecycle")
+check(ui.DiagnosticValues.Text:find("Adapter.Name") and ui.DiagnosticValues.Text:find("Timing.AimMs"), "new diagnostics render actual snapshot keys")
+check(ui.DiagnosticSummary.Text:find("Solicitado:") ~= nil, "diagnostics distinguish requested config from effective status")
+check(find(function(item) return item.Text == "MODULE READY" end) ~= nil, "status indicator uses actual module state")
+
 camera.ViewportSize = vector.new(360, 640)
 ui.Window.Position = dim2.fromOffset(9000, -9000)
 for _ = 1, 31 do ui:Step(1 / 60) end
@@ -256,6 +332,7 @@ ui:Destroy()
 ui:Destroy()
 check(window.Destroyed and ui.Window == nil, "Destroy must be idempotent and remove owned GUI")
 check(ctx.InputCaptured == false, "Destroy must release input ownership")
+check(ui.SearchField == nil and ui.ProfileName == nil and next(ui.ModuleIndicators) == nil and #ui.Notifications == 0, "Destroy releases new owned GUI references and status closures")
 local state = ui.Open
 input.InputBegan:Fire(left, false)
 check(ui.Open == state, "input listeners must disconnect on Destroy")
@@ -276,5 +353,98 @@ check(fallback.StatusError, "private server actions must remain locked with no p
 fallbackConfig:Set("Aim.FOV", 180)
 button("Restaurar configuração de fábrica", fallback.Window).Activated:Fire()
 check(fallbackConfig:Get("Aim.FOV") == 120, "public controls must stay usable after optional capability failures")
+local fallbackPresetRow = find(function(item) return item.Name == "Preset de desempenho" end, fallback.Window)
+button("Balanced   ▾", fallbackPresetRow).Activated:Fire(); button("Low", fallbackPresetRow).Activated:Fire()
+check(fallbackConfig:Get("ESP.MaxElements") == 24, "preset control falls back to real config API when action wrapper is absent")
+button("Selecionar perfil   ▾", fallback.Window).Activated:Fire()
+check(fallback.StatusError and fallback.Open, "missing profile action is explicit and leaves public UI usable")
 fallback:Destroy()
+
+-- Optional TweenService transitions use bounded per-property ownership.
+env.TweenInfo = { new=function(duration, style, direction) return { Time=duration, Style=style, Direction=direction } end }
+local tweenService = { Tweens={}, FailCreate=false, FailPlay=false }
+function tweenService:Create(control, info, goals)
+    if self.FailCreate then error("mock Create failure") end
+    local tween = { Completed=signal(), Control=control, Info=info, Goals=goals }
+    function tween:Play()
+        if tweenService.FailPlay then error("mock Play failure") end
+        self.Played = true
+    end
+    function tween:Cancel() self.Cancelled=true self.Completed:Fire(enum.PlaybackState.Cancelled) end
+    function tween:Destroy() self.Destroyed=true end
+    function tween:Complete()
+        for property, value in pairs(self.Goals) do self.Control[property] = value end
+        self.Completed:Fire(enum.PlaybackState.Completed)
+    end
+    table.insert(self.Tweens,tween)
+    return tween
+end
+local animatedGui = fakeInstance.new("ScreenGui")
+animatedGui.AbsoluteSize = vector.new(1280,720)
+local animatedConfig = Config.new()
+local animatedServices = table.clone(ctx.Services)
+animatedServices.TweenService = tweenService
+local animated = UI.new({ Gui=animatedGui, Config=animatedConfig, Services=animatedServices })
+animated:Init()
+check(animated.Initialized and #tweenService.Tweens == 0, "optional animation service does not tween initial construction")
+local animatedAimRow = find(function(item) return item.Name == "Aim assist" end, animated.Window)
+local animatedSwitch = button("       OFF", animatedAimRow)
+local animatedThumb = find(function(item) return item.Name == "SwitchThumb" end, animatedAimRow)
+animatedSwitch.Activated:Fire()
+check(animatedConfig:Get("Aim.Enabled") and #tweenService.Tweens == 4, "switch changes create exactly one transition per animated property")
+check(animatedThumb.Position.X.Offset == 2, "switch thumb waits for native tween progression")
+for _, tween in ipairs(tweenService.Tweens) do
+    check(tween.Played and tween.Info.Time == 0.10, "native transitions play for 0.10 seconds")
+    tween:Complete()
+    check(tween.Destroyed, "completed native tween releases its instance")
+end
+check(next(animated.ActiveTweens) == nil and animatedThumb.Position.X.Offset == 14, "completion clears all active tween ownership")
+local animatedOutline = find(function(item) return item.ClassName == "UIStroke" end, animatedSwitch)
+local stableCleanupCount = #animated.Cleanup._items
+animatedSwitch.MouseEnter:Fire()
+local previousTween = tweenService.Tweens[#tweenService.Tweens]
+animatedSwitch.MouseLeave:Fire()
+check(previousTween.Cancelled and previousTween.Destroyed, "new hover state cancels and releases the previous property tween")
+local activeCount=0
+for _, properties in pairs(animated.ActiveTweens) do for _ in pairs(properties) do activeCount += 1 end end
+check(activeCount == 1, "rapid hover retains only one tween per control/property")
+tweenService.Tweens[#tweenService.Tweens]:Complete()
+for _=1,20 do
+    animatedSwitch.MouseEnter:Fire(); animatedSwitch.MouseLeave:Fire()
+    tweenService.Tweens[#tweenService.Tweens]:Complete()
+end
+check(next(animated.ActiveTweens) == nil and #animated.Cleanup._items == stableCleanupCount, "completed animations do not accumulate cleanup entries")
+tweenService.FailCreate=true
+animatedSwitch.MouseEnter:Fire()
+check(animatedOutline.Color == animated.Colors.Accent and next(animated.ActiveTweens) == nil, "Create failure falls back to direct state")
+tweenService.FailCreate=false; tweenService.FailPlay=true
+animatedSwitch.MouseLeave:Fire()
+local failedTween = tweenService.Tweens[#tweenService.Tweens]
+check(animatedOutline.Color == animated.Colors.Line and failedTween.Cancelled and failedTween.Destroyed and next(animated.ActiveTweens) == nil, "Play failure releases tween and applies direct state")
+tweenService.FailPlay=false
+local savedTweenInfo = env.TweenInfo
+env.TweenInfo=nil
+animatedSwitch.MouseEnter:Fire()
+check(animatedOutline.Color == animated.Colors.Accent and next(animated.ActiveTweens) == nil, "missing TweenInfo does not block direct hover")
+env.TweenInfo=savedTweenInfo
+local savedEnum=env.Enum
+env.Enum=nil
+animated:_animate(animatedOutline,{Color=animated.Colors.Line})
+check(animatedOutline.Color == animated.Colors.Line and next(animated.ActiveTweens) == nil, "missing animation enum falls back without raising")
+env.Enum=savedEnum
+animatedSwitch.MouseEnter:Fire()
+animatedConfig:Set("Settings.Theme", "Cyan")
+check(next(animated.ActiveTweens) == nil and animatedOutline.Color == animated.Colors.Accent, "theme changes settle active animations before recoloring")
+animatedSwitch.MouseLeave:Fire()
+animated:Hide()
+check(next(animated.ActiveTweens) == nil and animatedOutline.Color == animated.Colors.Line, "hiding settles and releases active transitions")
+animated:Show()
+animatedConfig:Set("Aim.Enabled",false)
+local pendingTweens={}
+for _, properties in pairs(animated.ActiveTweens) do for _, entry in pairs(properties) do table.insert(pendingTweens,entry.Tween) end end
+check(#pendingTweens == 4, "switch transition is active before unload")
+animated:Destroy()
+for _, tween in ipairs(pendingTweens) do check(tween.Cancelled and tween.Destroyed, "Destroy cancels and destroys every pending transition") end
+check(next(animated.ActiveTweens) == nil, "Destroy releases the active tween map")
+
 print(string.format("ui.spec: %d logic checks passed (mock GUI; no rendering validation)", checks))

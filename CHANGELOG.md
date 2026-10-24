@@ -1,4 +1,14 @@
-# Changelog
+# CHANGELOG
+
+## 4.0.0 — 2026-10-24
+
+- UI V4 com controles reutilizáveis, busca, cores, temas, animações nativas e perfis da sessão.
+- UniversalGameAdapter e alias GameAdapterManager; mapeamentos próprios, tags, rigs e equipes oficiais/neutras.
+- Head Only coerente, fallback exato, Team Check dinâmico, seleção compartilhada e estabilidade angular.
+- ESP independente: skeleton R6/R15, cabeça/alvo, equipes/cores e categoria/tipo de itens.
+- Diagnósticos de velocidade solicitada/aplicada/efetiva e origem das respostas de saúde.
+- Regressões de respawn, rejeição síncrona, adapter opcional e notificações duplicadas de configuração.
+- Build 16 módulos, compilação de 36 arquivos e 9/9 etapas locais passaram. Motor Roblox/Xeno permanece pendente.
 
 ## 1.0.1 — 2026-10-24
 

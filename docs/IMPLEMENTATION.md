@@ -1,3 +1,5 @@
+> Histórico 1.x. Estado atual: [validação V4](V4_VALIDATION.md) e [plano V4](V4_PLAN.md).
+
 # VW MENU — desenho e plano de implementação original (1.0.0)
 
 Histórico preservado. A correção pública 1.0.1 está em PUBLIC_FIX_PLAN.md e README.md.

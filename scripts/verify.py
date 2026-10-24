@@ -42,20 +42,21 @@ def main() -> int:
         return passed
 
     run("build", [sys.executable, str(ROOT / "scripts/build.py")])
-    sources = sorted(ROOT.rglob("*.luau"))
+    sources = sorted(path for path in ROOT.rglob("*.luau") if not {"work", ".git", "__pycache__"}.intersection(path.relative_to(ROOT).parts))
     run(f"compile:all {len(sources)} Luau files", [compiler, "--null", *map(str, sources)])
     # combat_visuals is a lexical-injection fixture, run by its Python harness.
     standalone = [path for path in sorted((ROOT / "tests").glob("*.spec.luau"))
-                  if path.name not in {"combat_visuals.spec.luau", "movement.spec.luau", "loader.spec.luau", "bootstrap.spec.luau"}]
+                  if path.name not in {"combat_visuals.spec.luau", "movement.spec.luau", "loader.spec.luau", "bootstrap.spec.luau", "esp_v4.spec.luau"}]
     run("logic:standalone suites", [luau, *map(str, standalone)])
     run("logic:combat_visuals", [sys.executable, str(ROOT / "tests/run_combat_tests.py"), luau])
     movement_runner = ROOT / "tests/run_movement_tests.py"
     if movement_runner.exists():
         run("logic:movement", [sys.executable, str(movement_runner), "--luau", luau])
-    for name in ("loader", "bootstrap"):
+    for name in ("loader", "bootstrap", "esp_v4"):
         harness=ROOT / "tests" / f"run_{name}_tests.py"
         if harness.exists():
-            run("logic:"+name, [sys.executable, str(harness), "--luau", luau])
+            arguments=[luau] if name=="esp_v4" else ["--luau",luau]
+            run("logic:"+name, [sys.executable, str(harness), *arguments])
     run("python:unittest", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"])
     report = {"timestampUTC": datetime.now(timezone.utc).isoformat(),
               "scope": "Luau syntax and local logic with boundary doubles; Python build integrity",
@@ -64,7 +65,7 @@ def main() -> int:
               "sourceHashes": {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
                                for path in sources},
               "passed": all(result["passed"] for result in results)}
-    (ROOT / "docs/verification-results.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (ROOT / "docs/verification-results.json").write_bytes((json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     print(f'{sum(r["passed"] for r in results)}/{len(results)} local verification steps passed')
     return 0 if report["passed"] else 1
 

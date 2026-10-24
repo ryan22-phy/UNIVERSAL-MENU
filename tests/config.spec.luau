@@ -33,6 +33,33 @@ check(called == 1, "unsubscribe")
 c:Reset(); check(c:Get("Aim.FOV") == 120, "factory reset")
 local snapshot = c:Snapshot(); snapshot["Aim.FOV"] = 99
 check(c:Get("Aim.FOV") == 120, "snapshot isolation")
+check(c:Get("Aim.FallbackPart") == "HumanoidRootPart", "configured fallback default")
+check(c:Set("Aim.FallbackPart", "UpperTorso"), "valid fallback part")
+check(not c:Set("Aim.FallbackPart", "Head"), "fallback choices enforced")
+check(c:Set("ESP.PlayerColor", "aB12fF"), "six-digit RGB accepts mixed case")
+for _, invalid in ipairs({"#268BFF", "268BF", "268BFFF", "gg1122"}) do
+    check(not c:Set("ESP.PlayerColor", invalid), "reject malformed RGB: " .. invalid)
+end
+check(c:Import(c:Snapshot()), "full V4 schema round-trip import")
+check(not c:Import({ ["ESP.PlayerColor"]="GGGGGG", ["Aim.FOV"]=200 }), "invalid color import is atomic")
+check(c:Get("Aim.FOV") == 120, "color rejection preserves other settings")
+c:Set("Aim.Enabled", true); c:Set("ESP.Enabled", true); c:Set("Flight.Enabled", true)
+local observedAtomic = true
+local stopPreset = c:Subscribe(function()
+    if c:Get("Settings.Performance") == "High" then
+        observedAtomic = observedAtomic and c:Get("ESP.MaxElements") == 96 and c:Get("ESP.HeadMarker") == true
+    end
+end)
+check(c:ApplyPreset("High"), "apply high preset")
+check(observedAtomic and c:Get("ESP.Skeleton") and c:Get("ESP.RefreshRate") == 30, "preset publishes an atomic complete snapshot")
+check(c:Get("Aim.Enabled") and c:Get("ESP.Enabled") and c:Get("Flight.Enabled"), "presets preserve requested module enables")
+stopPreset()
+check(c:ApplyPreset("Low") and c:Get("ESP.MaxElements") == 24 and c:Get("ESP.RefreshRate") == 10, "low budget preset")
+check(not c:Get("ESP.Skeleton") and not c:Get("ESP.HeadMarker") and not c:Get("ESP.Lines"), "low preset disables costly visuals")
+check(c:ApplyPreset("Balanced") and c:Get("ESP.MaxElements") == 64 and c:Get("ESP.RefreshRate") == 20, "balanced defaults")
+check(not c:ApplyPreset("Ultra") and c:Get("Settings.Performance") == "Balanced", "unknown preset does not mutate")
+check(not c:Set("Settings.Adapter", "GuessAdapter"), "adapter choices enforced")
+check(not c:Set("Settings.Theme", "Pink"), "theme choices enforced")
 local cleanup = Cleanup.new(); local released=0
 cleanup:Add(function() released += 1 end)
 cleanup:Destroy(); cleanup:Destroy(); cleanup:Add(function() released += 1 end)

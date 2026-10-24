@@ -4,7 +4,7 @@ local checks=0
 local function check(value,reason) checks+=1; assert(value,reason) end
 local function fixture(options)
     options=options or {}
-    local state={Logs={},Objects={},Bindings={},UIFrames=0,FeatureEnables=0}
+    local state={Logs={},Objects={},Bindings={},UIFrames=0,FeatureEnables=0,FullUIRefreshes=0}
     local function signal()
         local listeners={}
         return {Connect=function(_,callback)
@@ -88,6 +88,7 @@ local function fixture(options)
         function ui:Disable() if self.Window then self.Window.Visible=false end end
         function ui:Destroy() self.Destroyed=true end
         function ui:Step() state.UIFrames+=1 end
+        function ui:UpdateConfig() state.FullUIRefreshes+=1 end
         return ui
     end}
     local cache={}
@@ -124,6 +125,7 @@ check(runtime.Alive and f.UI.Window.Visible,"public first execution visible")
 check(runtime.Context.IsAuthorized()==false,"lab remains unauthorized")
 check(runtime.Context.Gui.Enabled and runtime.Context.Gui.ResetOnSpawn==false,"public GUI survives respawn")
 runtime.Config:Set("Aim.Enabled",true); f.step()
+check(f.FullUIRefreshes==0,"UI owns config subscription; feature loop must not settle UI animations")
 check(f.FeatureEnables==0,"public UI does not grant privileged actions")
 check(f.UIFrames==1,"UI frame executes without lab authorization")
 f.UI.Window.Visible=false; local duplicate=f.start()

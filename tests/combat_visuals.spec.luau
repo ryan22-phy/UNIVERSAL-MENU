@@ -151,7 +151,7 @@ predicted:Destroy()
 local fallback=fixture()
 fallback.config["Aim.Fallback"]=false
 local bodyOnly=fallback.entity(1,20)
-function bodyOnly.Model:FindFirstChild(_) return nil end
+function bodyOnly.Model:FindFirstChild(name) return name=="HumanoidRootPart" and bodyOnly.Root or nil end
 table.insert(fallback.records,bodyOnly)
 local bodyAim=Aim.new(fallback.ctx); bodyAim:Enable(); press(fallback); bodyAim:Step(1/60)
 assert(fallback.camera.CFrame.Target==nil,"Missing heads must be rejected when Fallback is false")
@@ -225,3 +225,45 @@ g.authorize(false); esp:Step(1)
 assert(esp._enabled==false,"Authorization revocation must disable overlays immediately")
 esp:Destroy(); esp:Destroy()
 print("CombatVisuals: lifecycle, priorities, locking/delay, head fallback, death, prediction, smoothing, input capture, revocation, occlusion and cap checks passed")
+
+-- V4 head/team/rig regressions against the actual AimAssist implementation.
+local v4=fixture();local v4target=v4.entity(1,20,"Player")
+v4target.Player={Team="Blue",Neutral=false};table.insert(v4.records,v4target)
+local v4aim=Aim.new(v4.ctx);v4aim:Enable();press(v4);v4aim:Step(1/60)
+assert(v4aim._targetKey==nil,"same official team excluded")
+v4target.Player.Team="Red";v4aim:Step(1/60)
+assert(v4aim._targetKey==v4target.Instance,"live team change makes authorized enemy eligible")
+v4target.Player.Team="Blue";v4aim:Step(1/60)
+assert(v4aim._targetKey==nil and v4.ctx.SelectedTarget==nil,"team change must cancel lock and ESP selection")
+v4.config["Aim.TeamCheck"]=false;v4aim:UpdateConfig();press(v4);v4aim:Step(1/60)
+assert(v4aim._targetKey==v4target.Instance and v4.ctx.SelectedTarget==v4target.Instance,"Team Check off preserves authorization but permits teammates")
+v4.config["Aim.TeamCheck"]=true;v4aim:UpdateConfig()
+v4target.Player.Neutral=true;v4aim:Step(3)
+assert(v4aim:_candidate(v4target,v4.camera,Vector2.new(400,300))~=nil,"neutral stale Team is not a teammate")
+v4target.Player.Team=nil;v4.ctx.Player.Team=nil;v4target.Player.Neutral=false
+assert(v4aim:_candidate(v4target,v4.camera,Vector2.new(400,300))~=nil,"two teamless players must be eligible")
+v4target.Humanoid=nil
+assert(v4aim:_candidate(v4target,v4.camera,Vector2.new(400,300))==nil,"missing Humanoid cannot be called alive")
+v4target.Humanoid={Health=100,MaxHealth=100};v4.ctx.Player.Character=v4target.Model
+assert(v4aim:_candidate(v4target,v4.camera,Vector2.new(400,300))==nil,"own model excluded even when tagged as NPC")
+v4.ctx.Player.Character=nil
+local upper=v4.entity(2,20).Root;upper.Parent=v4target.Model;upper.Name="UpperTorso"
+function v4target.Model:FindFirstChild(name)if name=="UpperTorso"then return upper end;if name=="HumanoidRootPart"then return v4target.Root end end
+v4.config["Aim.FallbackPart"]="UpperTorso";v4.config["Aim.Fallback"]=true;v4aim:UpdateConfig()
+local candidate=v4aim:_candidate(v4target,v4.camera,Vector2.new(400,300))
+assert(candidate and candidate.Part==upper,"chosen upper torso fallback is honored and reported")
+upper.Parent=nil
+assert(v4aim:_candidate(v4target,v4.camera,Vector2.new(400,300))==nil,"destroyed fallback part ignored")
+v4aim:Destroy()
+local stability=fixture();local stableTarget=stability.entity(1,20);table.insert(stability.records,stableTarget)
+local stableAim=Aim.new(stability.ctx);stableAim:Enable();press(stability)
+for _=1,70 do stableAim:Step(1/60) end
+assert(type(stability.diagnostics["Aim.StabilityDeg"])=="number" and stability.diagnostics["Aim.StabilitySamples"]<=60,"bounded angular stability measurement")
+assert(stability.ctx.SelectedTarget==stableTarget.Instance,"selected target shared with ESP")
+local cameraB=Instance.new("Camera");cameraB.CFrame=CFrame.new(Vector3.new(0,0,0));cameraB.ViewportSize=stability.camera.ViewportSize;cameraB.WorldToViewportPoint=stability.camera.WorldToViewportPoint
+stability.workspace.CurrentCamera=cameraB;stableAim:Step(1/60)
+assert(cameraB.CFrame.Target~=nil,"camera replacement uses current camera")
+stability.workspace.CurrentCamera=nil;stableAim:Step(1/60)
+assert(stability.ctx.SelectedTarget==nil,"missing camera clears selected target")
+stableAim:Destroy()
+print("PASS V4 aim: dynamic teams, head/fallback lifecycle, stability and current camera")
