@@ -1,11 +1,11 @@
 {
-  "version": "1.0.1",
+  "version": "4.0.0",
   "protocol": 1,
   "releaseDate": "2026-10-24",
   "entry": "dist/VWMenu.luau",
   "minimumEnvironment": "Roblox client with PlayerGui; executor loader additionally requires HTTP and loadstring",
   "runtimeValidation": "PENDING_STUDIO_AND_XENO",
   "publicInterface": true,
-  "releaseRef": "v1.0.1",
+  "releaseRef": "v4.0.0",
   "repository": "https://github.com/ryan22-phy/UNIVERSAL-MENU"
 }

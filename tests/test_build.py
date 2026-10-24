@@ -30,6 +30,11 @@ class BuildTests(unittest.TestCase):
         self.assertIn('"ryan22-phy"', loader)
         self.assertIn('"UNIVERSAL-MENU"', loader)
         self.assertTrue((ROOT / "smoke-test.luau").exists())
+        release=json.loads((ROOT / "version.json").read_text(encoding="utf-8"))
+        self.assertIn('local RELEASE_REF = "'+release["releaseRef"]+'"',loader)
+        self.assertEqual(release["releaseRef"], "v"+release["version"])
+        policy=(ROOT / "config/ClientPolicy.luau").read_text(encoding="utf-8")
+        self.assertIn('Version = "'+release["version"]+'"',policy)
 
     def test_no_server_policy_in_client(self):
         modules = build.sources()
@@ -63,6 +68,11 @@ class BuildTests(unittest.TestCase):
         replicated = paths(project["tree"]["ReplicatedStorage"])
         self.assertFalse(any(value.startswith("src/server/") or value == "src/server"
                              or value == "src/config/ServerPolicy.luau" for value in replicated))
+        client=project["tree"]["ReplicatedStorage"]["VWMenuLab"]["client"]
+        for module in build.sources():
+            if module.startswith("client/"):
+                name=module.split("/",1)[1]
+                self.assertEqual(client[name]["$path"],"src/"+module+".luau")
 
 
 if __name__ == "__main__":

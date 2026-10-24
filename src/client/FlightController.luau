@@ -23,6 +23,7 @@ return function(_import)
 	end
 
 	function FlightController:_releaseCharacter()
+		if self.humanoid or self.root then self.generation += 1; self.lastRequest = nil end
 		if self.linear and self.linear.Parent and self.root and self.root.Parent and not self.root.Anchored then self.root.AssemblyLinearVelocity = Vector3.zero end
 		if self.linear then self.linear:Destroy(); self.linear = nil end
 		if self.orientation then self.orientation:Destroy(); self.orientation = nil end
@@ -81,13 +82,17 @@ return function(_import)
 		if signature == self.lastRequest then return end
 		self.lastRequest = signature
 		self.generation += 1
-		local generation = self.generation
+		local generation, character = self.generation, self.ctx.Player.Character
 		self.ctx.Bridge:Request("Flight", {Enabled = enabled, Speed = requestedSpeed, VerticalSpeed = requestedVertical}, function(response)
-			if self.destroyed or self.generation ~= generation then return end
+			if self.destroyed or self.generation ~= generation or self.ctx.Player.Character ~= character then return end
 			if not response.Ok then
 				self.ctx.Diagnostics:Log("Flight", "DENIED", response.Reason)
-				self:Disable()
-				self.ctx.Config:Set("Flight.Enabled", false)
+				if enabled then
+					self:Disable()
+					self.ctx.Config:Set("Flight.Enabled", false)
+					self.ctx.Diagnostics:Set("FlightStatus", "SERVER RESTRICTION")
+					self.ctx.Diagnostics:Set("FlightRestriction", response.Reason)
+				end
 			end
 		end)
 	end
@@ -95,9 +100,9 @@ return function(_import)
 	function FlightController:Enable()
 		if self.destroyed or self.enabled or not self.ctx.IsAuthorized() then return false end
 		self.enabled = true
-		self:_attach()
-		self:_request(true)
-		self.ctx.Diagnostics:Set("FlightStatus", "ENABLED")
+		local attached = self:_attach()
+		self.ctx.Diagnostics:Set("FlightStatus", if attached then "MODULE READY" else "CHARACTER NOT FOUND")
+		if attached then self:_request(true) end
 		return true
 	end
 
@@ -108,8 +113,11 @@ return function(_import)
 		self:_releaseCharacter()
 		if wasEnabled then self:_request(false) end
 		self.lastRequest = nil
-		self.ctx.Diagnostics:Set("FlightStatus", "DISABLED")
+		self.ctx.Diagnostics:Set("FlightStatus", "MODULE DISABLED")
 		self.ctx.Diagnostics:Set("FlightSpeed", 0)
+		self.ctx.Diagnostics:Set("FlightRequestedSpeed", 0)
+		self.ctx.Diagnostics:Set("FlightCommandedSpeed", 0)
+		self.ctx.Diagnostics:Set("FlightCorrection", "NOT_ACTIVE")
 	end
 
 	function FlightController:UpdateConfig(path)
@@ -118,16 +126,24 @@ return function(_import)
 
 	function FlightController:Step(dt)
 		if not self.enabled or self.destroyed then return end
-		if not self.ctx.IsAuthorized() then self:Disable(); return end
-		if not self:_attach() then self.ctx.Diagnostics:Set("FlightStatus", "WAITING_CHARACTER"); return end
+		if not self.ctx.IsAuthorized() then self:Disable(); self.ctx.Diagnostics:Set("FlightStatus", "SERVER RESTRICTION"); return end
+		if not self:_attach() then self.ctx.Diagnostics:Set("FlightStatus", "CHARACTER NOT FOUND"); return end
 		self.requestElapsed += dt
 		if not self.ctx.Bridge.Available then self.lastRequest = nil
 		elseif self.requestElapsed >= 0.3 and (self.configDirty or self.lastRequest == nil) then
 			self.requestElapsed, self.configDirty = 0, false
 			self:_request(true)
 		end
+		if not self.enabled then return end -- A synchronous bridge rejection may destroy the owned constraints.
 		local camera = self.ctx.Services.Workspace.CurrentCamera
-		if not camera then self.linear.VectorVelocity = Vector3.zero; return end
+		if not camera then
+			self.velocity = Vector3.zero
+			self.linear.VectorVelocity = Vector3.zero
+			self.ctx.Diagnostics:Set("FlightStatus", "CAMERA NOT FOUND")
+			self.ctx.Diagnostics:Set("FlightRequestedSpeed", 0)
+			self.ctx.Diagnostics:Set("FlightCommandedSpeed", 0)
+			return
+		end
 		local input = self.ctx.Services.UserInputService
 		local forward, side, vertical = 0, 0, 0
 		if not self.ctx.InputCaptured and not input:GetFocusedTextBox() then
@@ -144,14 +160,19 @@ return function(_import)
 		local speed, verticalSpeed, horizontalLimit, verticalLimit = self:_limits()
 		local boost = if not self.ctx.InputCaptured and not input:GetFocusedTextBox() and (input:IsKeyDown(Enum.KeyCode.LeftShift) or input:IsKeyDown(Enum.KeyCode.RightShift)) then self.ctx.Config:Get("Flight.Boost") else 1
 		local target = direction * math.min(speed * boost, horizontalLimit) + Vector3.yAxis * vertical * math.min(verticalSpeed * boost, verticalLimit)
+		local requested = direction * self.ctx.Config:Get("Flight.Speed") * boost + Vector3.yAxis * vertical * self.ctx.Config:Get("Flight.VerticalSpeed") * boost
 		local alpha = 1 - math.exp(-self.ctx.Config:Get("Flight.Acceleration") * math.clamp(dt, 0, 0.1))
 		self.velocity = self.velocity:Lerp(target, alpha)
 		self.linear.VectorVelocity = self.velocity
 		self.orientation.CFrame = CFrame.lookAt(Vector3.zero, look)
-		self.ctx.Diagnostics:Set("FlightStatus", "ENABLED")
-		self.ctx.Diagnostics:Set("FlightSpeed", math.round(self.velocity.Magnitude * 10) / 10)
+		self.ctx.Diagnostics:Set("FlightStatus", if requested.Magnitude > target.Magnitude + 0.001 then "SERVER RESTRICTION" else "MODULE READY")
+		self.ctx.Diagnostics:Set("FlightRequestedSpeed", math.round(requested.Magnitude * 10) / 10)
+		self.ctx.Diagnostics:Set("FlightCommandedSpeed", math.round(self.velocity.Magnitude * 10) / 10)
+		self.ctx.Diagnostics:Set("FlightSpeed", math.round(self.root.AssemblyLinearVelocity.Magnitude * 10) / 10)
 		local correctionAt = self.ctx.Bridge.LastCorrectionAt or 0
-		self.ctx.Diagnostics:Set("FlightCorrection", if correctionAt > 0 and os.clock() - correctionAt < 3 then "SERVER_REPORTED" elseif (self.root.AssemblyLinearVelocity - self.velocity).Magnitude > 25 then "HEURISTIC_ONLY:SUSPECTED_LOCAL" else "HEURISTIC_ONLY:NO_LOCAL_SIGNAL")
+		local correction = self.ctx.Bridge.Latest and self.ctx.Bridge.Latest.ConfirmedCorrection
+		local confirmed = self.ctx.Bridge.Available and type(correction) == "table" and correctionAt > 0 and os.clock() - correctionAt < 3
+		self.ctx.Diagnostics:Set("FlightCorrection", if confirmed then "SERVER_REPORTED" elseif (self.root.AssemblyLinearVelocity - self.velocity).Magnitude > 25 then "HEURISTIC_ONLY:SUSPECTED_LOCAL" else "HEURISTIC_ONLY:NO_LOCAL_SIGNAL")
 	end
 
 	function FlightController:Destroy()

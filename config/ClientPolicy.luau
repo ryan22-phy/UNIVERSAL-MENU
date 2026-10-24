@@ -5,7 +5,10 @@ return function(_import)
         AuthorizedUserIds = {}, -- your numeric Roblox UserId
         TargetUserIds = {}, -- participants who explicitly opted into this lab
         AllowStudio = false, -- explicit local Studio opt-in; server has its own policy
-        Version = "1.0.1",
+        -- Optional explicit mappings for an experience you own. Never inferred from clothes/names.
+        -- CustomAdapter = { RootName="Core", HeadName="Sensor", TeamAttribute="LabFaction" },
+        -- CustomItemTags = { MyAuthorizedPickup="Tools" },
+        Version = "4.0.0",
         -- Optional metadata only. UI checks JSON; it never executes an update.
         VersionUrl = "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/main/version.json",
         Protocol = 1,

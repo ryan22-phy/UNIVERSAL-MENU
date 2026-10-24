@@ -11,7 +11,7 @@ local function test(name, callback)
     if not ok then table.insert(failures, name .. ": " .. tostring(failure)) end
 end
 local validSource = "-- VW MENU 1.0.1\nreturn { Alive=true, Show=function(self) self.Visible=true end }"
-local releaseURL = "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/dist/VWMenu.luau"
+local releaseURL = "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v4.0.0/dist/VWMenu.luau"
 
 local function fixture(options)
     options = options or {}

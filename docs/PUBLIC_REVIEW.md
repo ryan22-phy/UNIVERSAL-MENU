@@ -1,3 +1,5 @@
+> Histórico 1.x. Estado atual: [validação V4](V4_VALIDATION.md) e [plano V4](V4_PLAN.md).
+
 # Revisão da correção pública 1.0.1
 
 Revisão independente de loader, smoke, bootstrap, mudanças de UI e fronteira de

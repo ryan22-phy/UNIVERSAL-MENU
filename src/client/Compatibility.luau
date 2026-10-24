@@ -23,7 +23,8 @@ return function(_import)
         result.gethui = type(env.gethui) == "function"
         result.loadstring = type(loadstring) == "function" or type(env.loadstring) == "function"
         result.request = type(env.request) == "function" or type(env.http_request) == "function"
-        result.HttpGet = pcall(function() return game.HttpGet end)
+        local httpOK,httpMethod=pcall(function() return game.HttpGet end)
+        result.HttpGet = httpOK and type(httpMethod)=="function"
         local raycastOK,raycastError=pcall(function() return ctx.Services.Workspace:Raycast(Vector3.zero, Vector3.new(0, 0.001, 0)) end)
         result.Raycast=raycastOK
         if not raycastOK then ctx.Diagnostics:Log("Compatibility","UNAVAILABLE","Raycast: "..tostring(raycastError)) end

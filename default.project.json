@@ -6,19 +6,50 @@
       "$className": "ReplicatedStorage",
       "VWMenuLab": {
         "$className": "Folder",
-        "config": {"$className": "Folder", "ClientPolicy": {"$path": "config/ClientPolicy.luau"}},
-        "shared": {"$path": "src/shared"},
+        "config": {
+          "$className": "Folder",
+          "ClientPolicy": {
+            "$path": "config/ClientPolicy.luau"
+          }
+        },
+        "shared": {
+          "$path": "src/shared"
+        },
         "client": {
           "$className": "Folder",
-          "ClientController": {"$path": "src/client/ClientController.luau"},
-          "Compatibility": {"$path": "src/client/Compatibility.luau"},
-          "EntityRegistry": {"$path": "src/client/EntityRegistry.luau"},
-          "ServerBridge": {"$path": "src/client/ServerBridge.luau"},
-          "AimAssist": {"$path": "src/client/AimAssist.luau"},
-          "ESPManager": {"$path": "src/client/ESPManager.luau"},
-          "FlightController": {"$path": "src/client/FlightController.luau"},
-          "SpeedController": {"$path": "src/client/SpeedController.luau"},
-          "HealthDiagnostics": {"$path": "src/client/HealthDiagnostics.luau"}
+          "ClientController": {
+            "$path": "src/client/ClientController.luau"
+          },
+          "Compatibility": {
+            "$path": "src/client/Compatibility.luau"
+          },
+          "EntityRegistry": {
+            "$path": "src/client/EntityRegistry.luau"
+          },
+          "ServerBridge": {
+            "$path": "src/client/ServerBridge.luau"
+          },
+          "AimAssist": {
+            "$path": "src/client/AimAssist.luau"
+          },
+          "ESPManager": {
+            "$path": "src/client/ESPManager.luau"
+          },
+          "FlightController": {
+            "$path": "src/client/FlightController.luau"
+          },
+          "SpeedController": {
+            "$path": "src/client/SpeedController.luau"
+          },
+          "HealthDiagnostics": {
+            "$path": "src/client/HealthDiagnostics.luau"
+          },
+          "UniversalGameAdapter": {
+            "$path": "src/client/UniversalGameAdapter.luau"
+          },
+          "GameAdapterManager": {
+            "$path": "src/client/GameAdapterManager.luau"
+          }
         }
       }
     },
@@ -26,16 +57,27 @@
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
-        "VWMenu": {"$path": "src/client/Main.client.luau"}
+        "VWMenu": {
+          "$path": "src/client/Main.client.luau"
+        }
       }
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
       "VWMenuLabServer": {
         "$className": "Folder",
-        "server": {"$path": "src/server"},
-        "config": {"$className": "Folder", "ServerPolicy": {"$path": "src/config/ServerPolicy.luau"}},
-        "ServerBootstrap": {"$path": "src/ServerBootstrap.server.luau"}
+        "server": {
+          "$path": "src/server"
+        },
+        "config": {
+          "$className": "Folder",
+          "ServerPolicy": {
+            "$path": "src/config/ServerPolicy.luau"
+          }
+        },
+        "ServerBootstrap": {
+          "$path": "src/ServerBootstrap.server.luau"
+        }
       }
     }
   }

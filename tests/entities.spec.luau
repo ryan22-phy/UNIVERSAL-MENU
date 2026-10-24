@@ -3,6 +3,8 @@ local Registry=require("../src/client/EntityRegistry")(nil)
 local world, players={},{}
 local root={Parent=world,IsA=function(_,name) return name=="BasePart" end}
 local object={Name="Target",authorized=false,streamed=true}
+root.Parent=object
+function root:IsDescendantOf(parent) return parent==object or parent==world end
 function object:IsA(name) return name=="Model" end
 function object:FindFirstChild() return root end
 function object:FindFirstChildOfClass(name) return name=="Humanoid" and {} or nil end
@@ -27,4 +29,5 @@ assert(#registry:List()==1 and registry:List()[1].Category=="Player","authorized
 object.streamed=false
 assert(#registry:List()==0,"streamed out removed immediately")
 registry:Destroy(); assert(#registry:List()==0,"cleanup")
-print("PASS entities.spec: 6 assertions (object doubles)")
+registry:Step(1);assert(#registry:List()==0,"destroyed registry cannot repopulate")
+print("PASS entities.spec: 7 assertions (object doubles)")

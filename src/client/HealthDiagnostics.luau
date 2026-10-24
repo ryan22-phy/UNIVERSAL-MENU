@@ -7,7 +7,7 @@ return function(_import)
 	end
 
 	function HealthDiagnostics.new(ctx)
-		return setmetatable({ctx = ctx, enabled = false, destroyed = false, elapsed = 0, generation = 0, confirmedGodmode = false}, HealthDiagnostics)
+		return setmetatable({ctx = ctx, enabled = false, destroyed = false, elapsed = 0, generation = 0, actionGeneration = 0, confirmedGodmode = false}, HealthDiagnostics)
 	end
 
 	function HealthDiagnostics:Init() return self end
@@ -21,10 +21,10 @@ return function(_import)
 		if not self.ctx.Bridge.Available then self.lastRequested = nil; self.confirmedGodmode = false; return false end
 		self.lastRequested = enabled
 		self.generation += 1
-		local generation = self.generation
+		local generation, character = self.generation, self.ctx.Player.Character
 		local completed = false
 		local function onResponse(response)
-			if self.destroyed or generation ~= self.generation then return end
+			if self.destroyed or generation ~= self.generation or self.ctx.Player.Character ~= character then return end
 			completed = true
 			local data = response.Data or {}
 			self.confirmedGodmode = response.Ok and enabled and data.Godmode == true
@@ -43,6 +43,7 @@ return function(_import)
 
 	function HealthDiagnostics:Enable()
 		if self.destroyed or not self.ctx.IsAuthorized() then return false end
+		self.character = self.ctx.Player.Character
 		self.enabled = true
 		self:UpdateConfig()
 		return true
@@ -57,12 +58,14 @@ return function(_import)
 	function HealthDiagnostics:Disable()
 		local wasEnabled = self.enabled
 		self.generation += 1 -- Invalidate callbacks even when the bridge has already disappeared.
+		self.actionGeneration += 1
 		self.enabled = false
 		self.confirmedGodmode = false
 		self:_restoreProbe()
 		if wasEnabled and self.lastRequested == true then self:_requestGodmode(false) end
 		self.lastRequested = nil
 		self.ctx.Diagnostics:Set("ServerGodmode", false)
+		self.ctx.Diagnostics:Set("HealthStatus", "MODULE DISABLED")
 	end
 
 	function HealthDiagnostics:UpdateConfig()
@@ -93,16 +96,38 @@ return function(_import)
 	function HealthDiagnostics:RequestDamage(amount)
 		if self.destroyed or not self.ctx.IsAuthorized() or not self.ctx.Bridge.Available then return false, "SERVER_REQUIRED" end
 		if not finite(amount) or amount < 0 or amount > 100 then return false, "INVALID_AMOUNT" end
-		return self.ctx.Bridge:Request("Damage", {Amount = amount}, function(response)
-			if not self.destroyed then self.ctx.Diagnostics:Log("Health", if response.Ok then "SERVER_ACK" else "DENIED", response.Reason) end
-		end)
+		return self:_requestAction("Damage", {Amount = amount}, "HealthDamage")
 	end
 
 	function HealthDiagnostics:RestoreHealth()
 		if self.destroyed or not self.ctx.IsAuthorized() or not self.ctx.Bridge.Available then return false, "SERVER_REQUIRED" end
-		return self.ctx.Bridge:Request("RestoreHealth", {}, function(response)
-			if not self.destroyed then self.ctx.Diagnostics:Log("Health", if response.Ok then "SERVER_ACK" else "DENIED", response.Reason) end
-		end)
+		return self:_requestAction("RestoreHealth", {}, "HealthRestore")
+	end
+
+	function HealthDiagnostics:_requestAction(action, payload, key)
+		local generation, character = self.actionGeneration, self.ctx.Player.Character
+		local diagnostics = self.ctx.Diagnostics
+		diagnostics:Set(key .. "Status", "PENDING")
+		diagnostics:Set(key .. "Reason", "AWAITING_RESPONSE")
+		local completed = false
+		local function onResponse(response)
+			if self.destroyed or self.actionGeneration ~= generation or self.ctx.Player.Character ~= character then return end
+			completed = true
+			local observed = response.Source == "SERVER"
+			local status = if not observed then (if response.Ok then "UNCONFIRMED" else "REQUEST_FAILED")
+				elseif not response.Ok then "SERVER_REJECTED"
+				elseif action == "Damage" and response.Reason == "GODMODE_BLOCKED" then "SERVER_BLOCKED"
+				else "SERVER_ACCEPTED"
+			local data = response.Data or {}
+			diagnostics:Set(key .. "Status", status)
+			diagnostics:Set(key .. "Reason", response.Reason or "UNSPECIFIED")
+			if observed and finite(data.Health) then diagnostics:Set("ServerHealth", data.Health) end
+			diagnostics:Log("Health", status, response.Reason, {Action = action, Source = response.Source or "UNCONFIRMED", Amount = payload.Amount,
+				ServerHealth = if observed then data.Health else nil, Scope = "DamageTestController.ApplyDamage ONLY"})
+		end
+		local sent, reason = self.ctx.Bridge:Request(action, payload, onResponse)
+		if sent == false and not completed then onResponse({Ok = false, Reason = reason or "REQUEST_NOT_SENT", Source = "LOCAL", Data = {}}) end
+		return sent, reason
 	end
 
 	function HealthDiagnostics:Step(dt)
@@ -111,8 +136,17 @@ return function(_import)
 		self.elapsed += dt
 		if self.elapsed < 0.2 then return end
 		self.elapsed = 0
-		self:UpdateConfig()
+		local character = self.ctx.Player.Character
+		if self.character ~= character then
+			self.character = character
+			self.generation += 1
+			self.actionGeneration += 1
+			self.lastRequested = nil
+			self.confirmedGodmode = false
+		end
 		local humanoid = self:_humanoid()
+		if self.probe and self.probe.Humanoid ~= humanoid then self:_restoreProbe() end
+		self:UpdateConfig()
 		local localHealth = if humanoid then humanoid.Health else nil
 		local data = self.ctx.Bridge.Latest or {}
 		local available = self.ctx.Bridge.Available
@@ -122,7 +156,9 @@ return function(_import)
 		local protected = self.enabled and self.confirmedGodmode and available and data.Godmode == true
 		self.ctx.Diagnostics:Set("ServerGodmode", protected)
 		self.ctx.Diagnostics:Set("HealthDivergence", if finite(localHealth) and finite(serverHealth) then math.round((localHealth - serverHealth) * 100) / 100 else "UNAVAILABLE")
-		self.ctx.Diagnostics:Set("HealthStatus", if protected then "SERVER_DAMAGE_GATE_ONLY" elseif available then "SERVER_OBSERVED" else "LOCAL_DIAGNOSTIC_ONLY")
+		self.ctx.Diagnostics:Set("HealthStatus", if not humanoid then "CHARACTER NOT FOUND" elseif not self.enabled then "MODULE DISABLED"
+			elseif protected then "SERVER_DAMAGE_GATE_ONLY" elseif available and finite(serverHealth) then "SERVER_OBSERVED"
+			elseif available then "AWAITING_SERVER_OBSERVATION" else "LOCAL_DIAGNOSTIC_ONLY")
 	end
 
 	function HealthDiagnostics:Destroy()

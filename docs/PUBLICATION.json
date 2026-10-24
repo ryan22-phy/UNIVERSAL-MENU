@@ -1,14 +1,15 @@
 {
-  "version": "1.0.1",
+  "version": "4.0.0",
+  "releaseRef": "v4.0.0",
   "repository": "https://github.com/ryan22-phy/UNIVERSAL-MENU",
-  "baseCommit": "11c54d990e37704fc13dc01f8cc79b642ea8f230",
-  "fixCommit": "e9e0398faaf2a0c575215540bbef5df95d7bc149",
-  "mergeCommit": "75811b7ffe8f6cf512e5b4b00c649a4af9a3242f",
-  "pullRequest": "https://github.com/ryan22-phy/UNIVERSAL-MENU/pull/1",
-  "tag": "v1.0.1",
-  "mainEntry": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/main/loader.luau",
-  "stableEntry": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/loader.luau",
-  "rawMainVerified": true,
-  "rawTagVerified": true,
-  "robloxXenoExecution": "NOT_EXECUTED"
+  "sourceBranch": "codex/vw-menu-v4",
+  "baseCommit": "2c1563cbf4739f7756e406f2ce4bf1948b50b6d7",
+  "bundleSHA256": "54169f965ad76c911d0fb4778b32ccdca8e5294dd7e6951b2b47c60438f88501",
+  "localVerification": "PASS_9_OF_9",
+  "independentReview": "NO_OPEN_CRITICAL_OR_IMPORTANT_FINDINGS",
+  "publication": "PREPARED_FOR_PUBLICATION",
+  "robloxStudio": "NOT_CONNECTED_NOT_EXECUTED",
+  "xeno": "NOT_EXECUTED",
+  "serverReplication": "NOT_EXECUTED",
+  "note": "Publication receipts are recorded on main after the immutable tag is created; the tag build itself cannot contain its future HTTP observation."
 }

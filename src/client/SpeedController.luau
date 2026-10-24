@@ -11,9 +11,10 @@ return function(_import)
 	function SpeedController:Init() return self end
 
 	function SpeedController:_restore()
+		if self.humanoid then self.generation += 1; self.lastRequest = nil end
 		if self.humanoid and self.humanoid.Parent then self.humanoid.WalkSpeed = self.baseline end
 		self.humanoid, self.baseline, self.lastWritten, self.lastPosition = nil, nil, nil, nil
-		self.lastSampleAt = 0
+		self.lastSampleAt, self.suspectedUntil, self.reportElapsed = 0, 0, 0
 	end
 
 	function SpeedController:_capture()
@@ -35,7 +36,8 @@ return function(_import)
 		local policy = self.ctx.Bridge.Latest and self.ctx.Bridge.Latest.Policy or {}
 		local limit = policy.MaxWalkSpeed or 80
 		local multiplier = config:Get("Speed.Multiplier")
-		return math.min(config:Get("Speed.WalkSpeed") * multiplier, limit), math.min(config:Get("Speed.SprintSpeed") * multiplier, limit)
+		local walk, sprint = config:Get("Speed.WalkSpeed") * multiplier, config:Get("Speed.SprintSpeed") * multiplier
+		return math.min(walk, limit), math.min(sprint, limit), walk, sprint
 	end
 
 	function SpeedController:_request(enabled)
@@ -45,23 +47,27 @@ return function(_import)
 		if signature == self.lastRequest then return end
 		self.lastRequest = signature
 		self.generation += 1
-		local generation = self.generation
+		local generation, character = self.generation, self.ctx.Player.Character
 		self.ctx.Bridge:Request("Speed", {Enabled = enabled, WalkSpeed = walk, SprintSpeed = sprint, Multiplier = 1}, function(response)
-			if self.destroyed or self.generation ~= generation then return end
+			if self.destroyed or self.generation ~= generation or self.ctx.Player.Character ~= character then return end
 			if not response.Ok then
 				self.ctx.Diagnostics:Log("Speed", "DENIED", response.Reason)
-				self:Disable()
-				self.ctx.Config:Set("Speed.Enabled", false)
+				if enabled then
+					self:Disable()
+					self.ctx.Config:Set("Speed.Enabled", false)
+					self.ctx.Diagnostics:Set("SpeedStatus", "SERVER RESTRICTION")
+					self.ctx.Diagnostics:Set("SpeedRestriction", response.Reason)
+				end
 			end
 		end)
 	end
 
 	function SpeedController:Enable()
 		if self.destroyed or self.enabled or not self.ctx.IsAuthorized() then return false end
-		self:_capture()
+		local captured = self:_capture()
 		self.enabled = true
-		self:_request(true)
-		self.ctx.Diagnostics:Set("SpeedStatus", "ENABLED")
+		self.ctx.Diagnostics:Set("SpeedStatus", if captured then "MODULE READY" else "CHARACTER NOT FOUND")
+		if captured then self:_request(true) end
 		return true
 	end
 
@@ -72,7 +78,11 @@ return function(_import)
 		self:_restore()
 		if wasEnabled then self:_request(false) end
 		self.lastRequest = nil
-		self.ctx.Diagnostics:Set("SpeedStatus", "DISABLED")
+		self.ctx.Diagnostics:Set("SpeedStatus", "MODULE DISABLED")
+		self.ctx.Diagnostics:Set("RequestedSpeed", 0)
+		self.ctx.Diagnostics:Set("AppliedSpeed", 0)
+		self.ctx.Diagnostics:Set("EffectiveSpeed", 0)
+		self.ctx.Diagnostics:Set("SpeedCorrection", "NOT_ACTIVE")
 	end
 
 	function SpeedController:UpdateConfig(path)
@@ -81,26 +91,32 @@ return function(_import)
 
 	function SpeedController:Step(dt)
 		if self.destroyed or not self.enabled then return end
-		if not self.ctx.IsAuthorized() then self:Disable(); return end
-		if not self:_capture() then self.ctx.Diagnostics:Set("SpeedStatus", "WAITING_CHARACTER"); return end
+		if not self.ctx.IsAuthorized() then self:Disable(); self.ctx.Diagnostics:Set("SpeedStatus", "SERVER RESTRICTION"); return end
+		if not self:_capture() then self.ctx.Diagnostics:Set("SpeedStatus", "CHARACTER NOT FOUND"); return end
 		self.requestElapsed += dt
 		if not self.ctx.Bridge.Available then self.lastRequest = nil
 		elseif self.requestElapsed >= 0.3 and (self.configDirty or self.lastRequest == nil) then
 			self.requestElapsed, self.configDirty = 0, false
 			self:_request(true)
 		end
+		if not self.enabled then return end -- A synchronous bridge rejection may release character ownership.
 		local humanoid = self.humanoid
 		local now = os.clock()
 		if self.lastWritten and math.abs(humanoid.WalkSpeed - self.lastWritten) > 2 then self.suspectedUntil = now + 2 end
 		local input = self.ctx.Services.UserInputService
 		local sprintKey = keyCodes[self.ctx.Config:Get("Speed.SprintKey")] or Enum.KeyCode.LeftShift
 		local sprinting = not self.ctx.InputCaptured and not input:GetFocusedTextBox() and input:IsKeyDown(sprintKey)
-		local walk, sprint = self:_values()
+		local walk, sprint, requestedWalk, requestedSprint = self:_values()
 		local target = if sprinting then sprint else walk
+		local requested = if sprinting then requestedSprint else requestedWalk
 		local alpha = 1 - math.exp(-self.ctx.Config:Get("Speed.Acceleration") * math.clamp(dt, 0, 0.1))
 		self.current += (target - self.current) * alpha
 		humanoid.WalkSpeed = self.current
 		self.lastWritten = self.current
+		self.ctx.Diagnostics:Set("RequestedSpeed", math.round(requested * 10) / 10)
+		self.ctx.Diagnostics:Set("AppliedSpeed", math.round(humanoid.WalkSpeed * 10) / 10)
+		self.ctx.Diagnostics:Set("SpeedMode", if sprinting then "SPRINT" else "WALK")
+		self.ctx.Diagnostics:Set("SpeedStatus", if requested > target then "SERVER RESTRICTION" else "MODULE READY")
 		self.reportElapsed += dt
 		if self.reportElapsed < 0.2 then return end
 		self.reportElapsed = 0
@@ -117,8 +133,10 @@ return function(_import)
 			self.lastPosition, self.lastSampleAt = root.Position, now
 		end
 		self.ctx.Diagnostics:Set("EffectiveSpeed", math.round(effective * 10) / 10)
-		self.ctx.Diagnostics:Set("SpeedCorrection", if now < self.suspectedUntil then "SUSPECTED_LOCAL_ONLY" else "NO_LOCAL_SIGNAL")
-		self.ctx.Diagnostics:Set("SpeedStatus", if sprinting then "SPRINT" else "WALK")
+		local correction = self.ctx.Bridge.Latest and self.ctx.Bridge.Latest.ConfirmedCorrection
+		local correctionAt = self.ctx.Bridge.LastCorrectionAt or 0
+		local confirmed = self.ctx.Bridge.Available and type(correction) == "table" and correctionAt > 0 and now - correctionAt < 3
+		self.ctx.Diagnostics:Set("SpeedCorrection", if confirmed then "SERVER_REPORTED" elseif now < self.suspectedUntil then "HEURISTIC_ONLY:SUSPECTED_LOCAL" else "HEURISTIC_ONLY:NO_LOCAL_SIGNAL")
 	end
 
 	function SpeedController:Destroy()
