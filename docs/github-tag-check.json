@@ -1,6 +1,53 @@
 {
+  "timestampUTC": "2026-10-24T20:05:36.692224+00:00",
   "reference": "v4.0.0",
-  "status": "PENDING_PUBLICATION_VERIFICATION",
-  "passed": null,
-  "scope": "The immutable build is prepared; post-publication HTTP receipts are recorded on main."
+  "scope": "Public HTTP status and exact local/remote file comparison; no code execution",
+  "results": [
+    {
+      "path": "loader.luau",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v4.0.0/loader.luau",
+      "passed": true,
+      "status": 200,
+      "sha256": "68fd586f3f5756467e5c511cb8532ad28e548c9e41fc9599cba2ee67b9ea8fe5",
+      "bytes": 6029,
+      "exactContentMatch": true
+    },
+    {
+      "path": "dist/VWMenu.luau",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v4.0.0/dist/VWMenu.luau",
+      "passed": true,
+      "status": 200,
+      "sha256": "54169f965ad76c911d0fb4778b32ccdca8e5294dd7e6951b2b47c60438f88501",
+      "bytes": 195247,
+      "exactContentMatch": true
+    },
+    {
+      "path": "dist/manifest.json",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v4.0.0/dist/manifest.json",
+      "passed": true,
+      "status": 200,
+      "sha256": "bacd1c3af40bcc4baa60500bf6a6c30ff2b9f68fae75d6fdf9522d0b9d84bbab",
+      "bytes": 651,
+      "exactContentMatch": true
+    },
+    {
+      "path": "version.json",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v4.0.0/version.json",
+      "passed": true,
+      "status": 200,
+      "sha256": "7025325f65ef84fc376fb073049ae9514c63f966ba4057665c7d80bfd3c73223",
+      "bytes": 386,
+      "exactContentMatch": true
+    },
+    {
+      "path": "smoke-test.luau",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v4.0.0/smoke-test.luau",
+      "passed": true,
+      "status": 200,
+      "sha256": "d6721d1af830c53437bb15a8eedb3ad078219bbf7d615de61c87d6657d8df9a1",
+      "bytes": 1491,
+      "exactContentMatch": true
+    }
+  ],
+  "passed": true
 }

@@ -7,9 +7,15 @@
   "bundleSHA256": "54169f965ad76c911d0fb4778b32ccdca8e5294dd7e6951b2b47c60438f88501",
   "localVerification": "PASS_9_OF_9",
   "independentReview": "NO_OPEN_CRITICAL_OR_IMPORTANT_FINDINGS",
-  "publication": "PREPARED_FOR_PUBLICATION",
+  "publication": "PUBLISHED_AND_PUBLIC_HTTP_VERIFIED",
   "robloxStudio": "NOT_CONNECTED_NOT_EXECUTED",
   "xeno": "NOT_EXECUTED",
   "serverReplication": "NOT_EXECUTED",
-  "note": "Publication receipts are recorded on main after the immutable tag is created; the tag build itself cannot contain its future HTTP observation."
+  "note": "Tag v4.0.0 is immutable. These HTTP receipts were added to main after publication; they read bytes without executing code.",
+  "sourceCommit": "d357c6191b3827ce02c6b028754a4424faf753d9",
+  "mergeCommit": "4327fdd9fc5baa8db8d2b3e4a322f0c2cecb0883",
+  "pullRequest": "https://github.com/ryan22-phy/UNIVERSAL-MENU/pull/2",
+  "tagCheck": true,
+  "mainCheck": true,
+  "ci": "NO_CHECK_RUNS_OR_STATUS_CONTEXTS_CONFIGURED"
 }
