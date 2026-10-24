@@ -1,0 +1,14 @@
+{
+  "version": "1.0.1",
+  "repository": "https://github.com/ryan22-phy/UNIVERSAL-MENU",
+  "baseCommit": "11c54d990e37704fc13dc01f8cc79b642ea8f230",
+  "fixCommit": "e9e0398faaf2a0c575215540bbef5df95d7bc149",
+  "mergeCommit": "75811b7ffe8f6cf512e5b4b00c649a4af9a3242f",
+  "pullRequest": "https://github.com/ryan22-phy/UNIVERSAL-MENU/pull/1",
+  "tag": "v1.0.1",
+  "mainEntry": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/main/loader.luau",
+  "stableEntry": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/loader.luau",
+  "rawMainVerified": true,
+  "rawTagVerified": true,
+  "robloxXenoExecution": "NOT_EXECUTED"
+}

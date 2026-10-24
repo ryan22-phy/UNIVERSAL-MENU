@@ -24,9 +24,9 @@ elas serão exercitadas com injeção de falhas, sem alegar execução Xeno.
 - [x] Auditoria de UI e testes CTRL, navegação, drag, controles e cleanup.
 - [x] Metadados/build 1.0.1 consistentes; nenhuma política de servidor removida.
 - [x] Testes de regressão, compilação total e revisão independente.
-- [ ] Publicação em branch de correção, tag v1.0.1 e PR para main; verificar
+- [x] Publicação em branch de correção, tag v1.0.1 e PR para main; verificar
   conteúdo Raw da tag, sem confundir publicação com validação de engine.
-- [ ] Atualizar os arquivos entregues, ZIP, diagnóstico e testes pendentes.
+- [x] Atualizar os arquivos entregues, ZIP, diagnóstico e testes pendentes.
 
 ## Contratos entre tarefas
 

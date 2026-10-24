@@ -1,0 +1,53 @@
+{
+  "timestampUTC": "2026-10-24T19:21:44.613816+00:00",
+  "reference": "v1.0.1",
+  "scope": "Public HTTP status and exact local/remote file comparison; no code execution",
+  "results": [
+    {
+      "path": "loader.luau",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/loader.luau",
+      "passed": true,
+      "status": 200,
+      "sha256": "82581f610fc0274ad458349146af793c6b6daae090c4b983ffe892d74dbcbeca",
+      "bytes": 5962,
+      "exactContentMatch": true
+    },
+    {
+      "path": "dist/VWMenu.luau",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/dist/VWMenu.luau",
+      "passed": true,
+      "status": 200,
+      "sha256": "3b6007aed0014a6d5ec82b593990b70c16a6b8a691fe12ac3f267dab2b97bc83",
+      "bytes": 137993,
+      "exactContentMatch": true
+    },
+    {
+      "path": "dist/manifest.json",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/dist/manifest.json",
+      "passed": true,
+      "status": 200,
+      "sha256": "c469d5188b025a7ed2b23bdc9f208750bfd0f40538c20baca33c2aafd01d0f0c",
+      "bytes": 606,
+      "exactContentMatch": true
+    },
+    {
+      "path": "version.json",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/version.json",
+      "passed": true,
+      "status": 200,
+      "sha256": "cd6963000a6bc63c080f1dc214d3d11ba5dad402a20a9e537dd010d8cd214941",
+      "bytes": 386,
+      "exactContentMatch": true
+    },
+    {
+      "path": "smoke-test.luau",
+      "url": "https://raw.githubusercontent.com/ryan22-phy/UNIVERSAL-MENU/v1.0.1/smoke-test.luau",
+      "passed": true,
+      "status": 200,
+      "sha256": "d6721d1af830c53437bb15a8eedb3ad078219bbf7d615de61c87d6657d8df9a1",
+      "bytes": 1491,
+      "exactContentMatch": true
+    }
+  ],
+  "passed": true
+}
