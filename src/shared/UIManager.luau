@@ -604,8 +604,8 @@ return function(import)
 		local viewport = self:_viewport()
 		local requested = self:_get("Settings.Scale", 1)
 		if not finite(requested) then requested = 1 end
-		local fit = math.min((viewport.X - 16) / WIDTH, (viewport.Y - 16) / HEIGHT)
-		self.UIScale.Scale = math.max(0.05, math.min(requested, fit))
+		local fit = math.min(math.max(1, viewport.X - 16) / WIDTH, math.max(1, viewport.Y - 16) / HEIGHT)
+		self.UIScale.Scale = math.min(math.max(0.05, requested), fit)
 		local size = Vector2.new(WIDTH, HEIGHT) * self.UIScale.Scale
 		local position = self.Window.Position
 		local x, y = position.X.Offset, position.Y.Offset
@@ -708,7 +708,7 @@ return function(import)
 		local window = create("Frame", {
 			Name = "VWMenuWindow", Size = UDim2.fromOffset(WIDTH, HEIGHT),
 			Position = UDim2.fromOffset(0, 0), BackgroundColor3 = COLORS.Background,
-			BorderSizePixel = 0, Active = true, ClipsDescendants = true,
+			BorderSizePixel = 0, Active = true, ClipsDescendants = true, Visible = true,
 		}, self.Ctx.Gui)
 		self.Window = window
 		self.Cleanup:Add(window)
@@ -778,8 +778,8 @@ return function(import)
 			create("UIPadding", { PaddingBottom = UDim.new(0, 16) }, page)
 			self.Pages[name] = page
 		end
-		text(window, "AUTHORIZED\nLABORATORY", UDim2.fromOffset(18, 409), UDim2.fromOffset(114, 39), {
-			TextSize = 9, TextColor3 = COLORS.Muted, Font = Enum.Font.GothamBold,
+		text(window, "Interface pública; ações do laboratório exigem autorização", UDim2.fromOffset(18, 393), UDim2.fromOffset(114, 70), {
+			TextSize = 10, TextColor3 = COLORS.Muted, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
 		})
 		self.PageTitle = text(window, "", UDim2.fromOffset(164, 69), UDim2.fromOffset(260, 25), {
 			TextSize = 18, Font = Enum.Font.GothamBold,
@@ -797,7 +797,7 @@ return function(import)
 		self.Connection = text(window, "", UDim2.fromOffset(15, 480), UDim2.fromOffset(230, 23), {
 			TextSize = 9, TextColor3 = COLORS.Muted,
 		})
-		self.Feedback = text(window, "Pronto · alterações são validadas pelo laboratório", UDim2.fromOffset(246, 480), UDim2.fromOffset(516, 23), {
+		self.Feedback = text(window, "Interface pública · CTRL abre / fecha", UDim2.fromOffset(246, 480), UDim2.fromOffset(516, 23), {
 			TextSize = 9, TextColor3 = COLORS.Muted,
 			TextXAlignment = Enum.TextXAlignment.Right, TextTruncate = Enum.TextTruncate.AtEnd,
 		})
@@ -837,11 +837,11 @@ return function(import)
 
 	function UIManager:_updateDiagnostics()
 		local authorized, server = self:_authorized(), self:_serverAvailable()
-		self.Authorization.Text = authorized and "AUTORIZADO · LABORATÓRIO" or "BLOQUEADO · MODO DIAGNÓSTICO"
+		self.Authorization.Text = authorized and "INTERFACE PÚBLICA · LAB AUTORIZADO" or "INTERFACE PÚBLICA · LAB BLOQUEADO"
 		self.Authorization.TextColor3 = authorized and COLORS.Success or COLORS.Light
 		self.Connection.Text = string.format("%d FPS  ·  SERVIDOR %s", math.floor(self.FPS + 0.5), server and "DISPONÍVEL" or "AUSENTE")
 		self.DiagnosticSummary.Text = string.format(
-			"FPS medido: %d  |  Autorização: %s  |  Serviço do servidor: %s\nConfiguração local editável. Recursos e testes dependem da política e das confirmações de servidor.",
+			"FPS medido: %d  |  Autorização do laboratório: %s  |  Serviço do servidor: %s\nInterface pública; ações do laboratório exigem autorização. Configuração local editável.",
 			math.floor(self.FPS + 0.5), authorized and "concedida" or "ausente / bloqueada", server and "disponível" or "ausente"
 		)
 		local diagnostics = self.Ctx.Diagnostics
@@ -896,15 +896,19 @@ return function(import)
 		self:_fit()
 	end
 
-	function UIManager:Enable()
+	function UIManager:Show()
 		if self.Destroyed then return end
 		if not self.Initialized then self:Init() end
 		self:_setOpen(true)
 	end
 
-	function UIManager:Disable()
+	function UIManager:Hide()
 		if not self.Destroyed then self:_setOpen(false) end
 	end
+
+	-- Compatibility with the feature-controller lifecycle; visibility is public.
+	UIManager.Enable = UIManager.Show
+	UIManager.Disable = UIManager.Hide
 
 	function UIManager:Step(dt)
 		if not self.Initialized or self.Destroyed or not finite(dt) or dt <= 0 then return end

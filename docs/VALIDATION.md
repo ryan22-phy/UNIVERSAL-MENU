@@ -1,4 +1,22 @@
-# Validação e aceitação — 2026-10-24
+# Validação e aceitação — 1.0.1 / 2026-10-24
+
+## Correção pública 1.0.1
+
+O loader 1.0.0 publicado foi inspecionado em main e abortava antes do HTTP por
+placeholders obrigatórios. A correção usa proprietário/repositório reais e uma
+release fixada, sem chaves ou whitelist para abrir a UI. Não existia key system;
+as listas existentes autorizam somente os recursos do laboratório.
+
+A suíte atual inclui testes do loader real e smoke independente, bootstrap real
+com fronteiras simuladas, 94 verificações da UI e as regressões anteriores.
+Os resultados exatos da última execução estão em verification-results.json.
+O bootstrap cobre ausência de módulos opcionais, falha de Step/probe, fallback
+de agendamento, abertura pública sem autorização e limpeza da execução.
+O teste de bootstrap usa um stub de UI; ui.spec executa a UI real contra doubles.
+
+Disponibilidade de GitHub/Raw é uma verificação de rede separada e não comprova
+execução no cliente. scripts/check_public_urls.py compara cinco arquivos públicos
+com os bytes locais; seu relatório pós-publicação acompanha a entrega local.
 
 ## Alcance da evidência
 
@@ -25,7 +43,7 @@ As verificações Rojo locais validam o JSON, caminhos e separação de arquivos
 | Fly / src/client/FlightController.luau | Pendente | Pendente | Pendente | Pendente | Sintaxe e testes de lifecycle com doubles do harness de movimento | Constraints/hover/colisões e autoridade de rede pendentes |
 | Speed / src/client/SpeedController.luau | Pendente | Pendente | Pendente | Pendente | Baseline, sprint, coalescing e lifecycle com doubles | Velocidade aceita e correções reais pendentes |
 | Saúde/Godmode / HealthDiagnostics, DamageTestController | Pendente | Pendente | Pendente | Pendente | Política, lease e diagnóstico local com doubles | Integrar o gateway a cada fonte de dano; sem isso não protege esse dano |
-| UI / src/shared/UIManager.luau | Pendente | Pendente | Pendente | N/A | 80 checks de lógica com GUI simulada | Inspeção visual, resolução/DPI e input reais pendentes |
+| UI / src/shared/UIManager.luau | Pendente | Pendente | Pendente | N/A | 94 checks de lógica com GUI simulada | Inspeção visual, resolução/DPI e input reais pendentes |
 | Serviço / ServerTestService, PermissionService | Pendente | Pendente | N/A | Pendente | Payloads, política, lease, revogação e baseline em testes puros | Habilitar explicitamente laboratório privado/Studio e testar dois clientes |
 
 Todos os controles alteram ConfigManager. Isso é verificado no teste de UI;

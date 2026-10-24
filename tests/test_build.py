@@ -19,6 +19,17 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(content, (ROOT / second["bundle"]).read_bytes())
         self.assertEqual(hashlib.sha256(content).hexdigest(), second["sha256"])
+        version=json.loads((ROOT / "version.json").read_text(encoding="utf-8-sig"))["version"]
+        self.assertEqual(second["version"], version)
+        self.assertTrue(content.startswith(("-- VW MENU "+version+" ").encode("utf-8")))
+
+    def test_public_release_configuration(self):
+        loader=(ROOT / "loader.luau").read_text(encoding="utf-8-sig")
+        self.assertNotIn('"SEU_USUARIO"', loader)
+        self.assertNotIn('"COLOQUE_O_SHA_DO_COMMIT_AQUI"', loader)
+        self.assertIn('"ryan22-phy"', loader)
+        self.assertIn('"UNIVERSAL-MENU"', loader)
+        self.assertTrue((ROOT / "smoke-test.luau").exists())
 
     def test_no_server_policy_in_client(self):
         modules = build.sources()

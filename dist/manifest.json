@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "protocol": 1,
   "bundle": "dist/VWMenu.luau",
-  "sha256": "2775ec3fd1e7f41f9402a678f4c1c1b4c93f27e16f8228121b800be79a9370ba",
-  "bytes": 129288,
+  "sha256": "3b6007aed0014a6d5ec82b593990b70c16a6b8a691fe12ac3f267dab2b97bc83",
+  "bytes": 137993,
   "modules": [
     "client/AimAssist",
     "client/ClientController",

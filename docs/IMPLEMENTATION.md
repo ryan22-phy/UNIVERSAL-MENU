@@ -1,4 +1,6 @@
-# VW MENU — desenho e plano de implementação
+# VW MENU — desenho e plano de implementação original (1.0.0)
+
+Histórico preservado. A correção pública 1.0.1 está em PUBLIC_FIX_PLAN.md e README.md.
 
 Data: 2026-10-24. Especificação: pedido e master prompt fornecidos pelo usuário.
 O usuário autorizou implementação contínua, sem aprovação entre fases.

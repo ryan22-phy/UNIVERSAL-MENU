@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1 — 2026-10-24
+
+- Corrigido o loader publicado que abortava por OWNER/PINNED_COMMIT provisórios.
+- Endereços reais do UNIVERSAL-MENU e release v1.0.1, sem configuração obrigatória.
+- Diagnóstico de HTTP, resposta inválida, compilação, execução e APIs por etapa.
+- Smoke test nativo independente, sem HTTP/importações.
+- Inicialização da UI antes dos módulos opcionais, com isolamento de falhas.
+- Reexecução reabre a janela, incluindo marcador de propriedade no PlayerGui.
+- Interface explicitamente pública; permissões de recursos e do servidor preservadas.
+- Testes de loader, smoke e bootstrap adicionados; cobertura pública de UI ampliada.
+- Engine Roblox/Xeno real permanece pendente de sessão acessível.
+
 ## 1.0.0 — 2026-10-24
 
 - Primeira implementação a partir da especificação fornecida; não havia fontes anteriores na pasta.
