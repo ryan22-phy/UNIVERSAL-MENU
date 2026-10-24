@@ -46,12 +46,16 @@ def main() -> int:
     run(f"compile:all {len(sources)} Luau files", [compiler, "--null", *map(str, sources)])
     # combat_visuals is a lexical-injection fixture, run by its Python harness.
     standalone = [path for path in sorted((ROOT / "tests").glob("*.spec.luau"))
-                  if path.name not in {"combat_visuals.spec.luau", "movement.spec.luau"}]
+                  if path.name not in {"combat_visuals.spec.luau", "movement.spec.luau", "loader.spec.luau", "bootstrap.spec.luau"}]
     run("logic:standalone suites", [luau, *map(str, standalone)])
     run("logic:combat_visuals", [sys.executable, str(ROOT / "tests/run_combat_tests.py"), luau])
     movement_runner = ROOT / "tests/run_movement_tests.py"
     if movement_runner.exists():
         run("logic:movement", [sys.executable, str(movement_runner), "--luau", luau])
+    for name in ("loader", "bootstrap"):
+        harness=ROOT / "tests" / f"run_{name}_tests.py"
+        if harness.exists():
+            run("logic:"+name, [sys.executable, str(harness), "--luau", luau])
     run("python:unittest", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"])
     report = {"timestampUTC": datetime.now(timezone.utc).isoformat(),
               "scope": "Luau syntax and local logic with boundary doubles; Python build integrity",
